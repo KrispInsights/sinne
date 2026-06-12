@@ -10,11 +10,13 @@ import type { SessionWithCheckin, Journey } from '@/lib/types';
 import { BodyFigureEllipses } from '@/components/BodyFigure';
 import { COLORS, RADII, CARD_SHADOW, FONTS, getStateColor, getEmotionColor } from '@/lib/theme';
 
-function formatSessionDateTime(iso: string): string {
+function formatSessionDateTime(iso: string, durationMinutes?: number | null): string {
   const d = new Date(iso);
   const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  return `${date} · ${time}`;
+  if (durationMinutes != null && durationMinutes > 0) {
+    return `${date} · ${durationMinutes} min`;
+  }
+  return date;
 }
 
 function formatDuration(minutes: number | null | undefined): string | null {
@@ -75,7 +77,7 @@ function SessionCard({ swc, journeyName, onPress }: { swc: SessionWithCheckin; j
             <Text style={s.journeyPillText}>{journeyName}</Text>
           </View>
         ) : null}
-        <Text style={s.cardDate}>{formatSessionDateTime(session.created_at)}</Text>
+        <Text style={s.cardDate}>{formatSessionDateTime(session.created_at, session.duration_minutes)}</Text>
         <Text style={s.cardTitle}>{session.practice_type || 'Session'}</Text>
         <View style={s.chipsRow}>
           {durationLabel ? (
@@ -102,7 +104,7 @@ function SessionCard({ swc, journeyName, onPress }: { swc: SessionWithCheckin; j
         ) : null}
       </View>
       <View style={s.cardRight}>
-        <BodyFigureEllipses width={64} bodySensations={checkin?.body_sensations ?? []} />
+        <BodyFigureEllipses width={72} bodySensations={checkin?.body_sensations ?? []} />
       </View>
     </TouchableOpacity>
   );
@@ -179,7 +181,7 @@ export default function SessionsScreen() {
           <Text style={s.subtitle}>{sessions.length} recorded sessions</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/settings' as any)} hitSlop={8}>
-          <MaterialCommunityIcons name="cog-outline" size={24} color="#999999" />
+          <MaterialCommunityIcons name="cog-outline" size={20} color="#CCCCCC" />
         </TouchableOpacity>
       </View>
 
@@ -250,24 +252,24 @@ const s = StyleSheet.create({
   title: { fontSize: 32, fontFamily: FONTS.display, color: COLORS.text },
   subtitle: { fontSize: 14, fontWeight: '400', color: COLORS.textTertiary, marginTop: 4 },
 
-  listContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 40, gap: 12 },
+  listContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 40, gap: 20 },
 
   // FAB
   fab: {
     position: 'absolute',
     bottom: 24,
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#B07FFF',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#B07FFF',
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    elevation: 4,
   },
 
   emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
@@ -279,7 +281,7 @@ const s = StyleSheet.create({
     padding: 20, gap: 12,
   },
   cardLeft: { flex: 1 },
-  cardRight: { width: '30%', alignItems: 'center', alignSelf: 'stretch' },
+  cardRight: { width: 72, alignItems: 'center', alignSelf: 'stretch', justifyContent: 'center', padding: 4 },
 
   journeyPill: {
     alignSelf: 'flex-start', backgroundColor: COLORS.crownTint,
@@ -320,7 +322,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 24, paddingVertical: 14, gap: 16, minHeight: 64,
   },
-  actionLabel: { fontSize: 16, fontWeight: '600', color: '#1A1A1A' },
+  actionLabel: { fontSize: 16, fontWeight: '500', color: '#1A1A1A' },
   actionSubtitle: { fontSize: 12, color: '#999999', marginTop: 2 },
   actionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 24 },
 });

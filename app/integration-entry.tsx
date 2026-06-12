@@ -227,6 +227,20 @@ export default function IntegrationEntryScreen() {
             </View>
           ))}
 
+          {/* Carry forward */}
+          <View style={s.questionCard}>
+            <Text style={[s.questionLabel, { color: accentColor }]}>CARRY FORWARD</Text>
+            <Text style={[s.carryForwardPrompt, { color: accentColor }]}>What feels important to carry forward?</Text>
+            <TextInput
+              style={s.questionInput}
+              value={carryForward}
+              onChangeText={setCarryForward}
+              placeholder="Optional…"
+              placeholderTextColor="#CCCCCC"
+              returnKeyType="done"
+            />
+          </View>
+
           {/* Add a note row / free text */}
           {showFreeText ? (
             <View style={s.questionCard}>
@@ -247,20 +261,6 @@ export default function IntegrationEntryScreen() {
               <Text style={s.addNoteText}>+ Add a note</Text>
             </TouchableOpacity>
           )}
-
-          {/* Carry forward */}
-          <View style={s.carryForwardSection}>
-            <Text style={s.carryForwardLabel}>CARRY FORWARD</Text>
-            <Text style={s.carryForwardPrompt}>What feels important to carry forward?</Text>
-            <TextInput
-              style={s.carryForwardInput}
-              value={carryForward}
-              onChangeText={setCarryForward}
-              placeholder="Optional…"
-              placeholderTextColor="#CCCCCC"
-              returnKeyType="done"
-            />
-          </View>
 
           {/* Journey selector */}
           {activeJourneys.length > 0 && (
@@ -335,7 +335,7 @@ const s = StyleSheet.create({
     borderRadius: 12, padding: 14, marginBottom: 12,
   },
   questionLabel: {
-    fontSize: 13, fontWeight: '600', marginBottom: 8, lineHeight: 18,
+    fontSize: 15, fontFamily: 'DMSerifDisplay_400Regular', marginBottom: 8, lineHeight: 22,
   },
   questionInput: {
     fontSize: 15, color: '#1A1A1A', lineHeight: 22, minHeight: 56,
@@ -375,22 +375,9 @@ const s = StyleSheet.create({
   journeyCheckboxChecked: { backgroundColor: '#B07FFF', borderColor: '#B07FFF' },
   journeyCheckmark: { fontSize: 13, color: '#FFFFFF', fontWeight: '700' },
 
-  carryForwardSection: {
-    marginTop: 12, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#E0E0E0',
-  },
-  carryForwardLabel: {
-    fontSize: 11, fontFamily: 'Nunito_600SemiBold', fontWeight: '600',
-    color: '#999999', letterSpacing: 0.88,
-    textTransform: 'uppercase', marginBottom: 8,
-  },
   carryForwardPrompt: {
     fontSize: 14, fontFamily: 'Nunito_400Regular', fontWeight: '400',
-    color: '#1A1A1A', marginBottom: 10, lineHeight: 22,
-  },
-  carryForwardInput: {
-    fontSize: 15, color: '#1A1A1A', backgroundColor: '#F7F7F7',
-    borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 12, minHeight: 44,
+    marginBottom: 10, lineHeight: 22, opacity: 0.7,
   },
 
   footer: { paddingHorizontal: 20, paddingTop: 12, backgroundColor: '#FFFFFF' },

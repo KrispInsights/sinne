@@ -138,7 +138,7 @@ export default function IntegrationScreen() {
         <View style={s.titleRow}>
           <Text style={s.title}>Integration</Text>
           <TouchableOpacity onPress={() => router.push('/settings' as any)} hitSlop={8}>
-            <MaterialCommunityIcons name="cog-outline" size={24} color="#666666" />
+            <MaterialCommunityIcons name="cog-outline" size={20} color="#CCCCCC" />
           </TouchableOpacity>
         </View>
         <Text style={s.prompt}>What do you want to explore?</Text>
@@ -150,7 +150,7 @@ export default function IntegrationScreen() {
             return (
               <TouchableOpacity
                 key={cat}
-                style={[s.gridCard, { backgroundColor: data.tint }]}
+                style={[s.gridCard, { backgroundColor: data.tint, borderColor: data.color }]}
                 onPress={() => router.push({ pathname: '/integration-entry', params: { category: cat } } as any)}
                 activeOpacity={0.75}
               >
@@ -174,13 +174,11 @@ export default function IntegrationScreen() {
               <View key={date} style={s.dateGroup}>
                 <Text style={s.dateHeader}>{formatGroupDate(date)}</Text>
                 {items.map((integ, idx) => (
-                  <React.Fragment key={integ.id}>
-                    <IntegrationRow
-                      integ={integ}
-                      onPress={() => router.push({ pathname: '/integration/[id]', params: { id: integ.id } } as any)}
-                    />
-                    {idx < items.length - 1 && <View style={s.rowDivider} />}
-                  </React.Fragment>
+                  <IntegrationRow
+                    key={integ.id}
+                    integ={integ}
+                    onPress={() => router.push({ pathname: '/integration/[id]', params: { id: integ.id } } as any)}
+                  />
                 ))}
               </View>
             ))}
@@ -240,8 +238,9 @@ const s = StyleSheet.create({
     width: '31%', minHeight: 80,
     borderRadius: 12, paddingVertical: 14, paddingHorizontal: 10,
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5,
   },
-  gridCardName: { fontSize: 15, fontWeight: '600', textAlign: 'center', marginBottom: 3 },
+  gridCardName: { fontSize: 15, fontWeight: '500', textAlign: 'center', marginBottom: 3 },
   gridCardDesc: { fontSize: 11, color: '#999999', textAlign: 'center', lineHeight: 14 },
 
   emptyRow: { alignItems: 'center', paddingTop: 8 },
@@ -258,10 +257,10 @@ const s = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#7E6B9E',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
+    shadowOpacity: 0.02,
+    shadowRadius: 12,
     elevation: 2,
   },
   dateHeader: {
@@ -271,10 +270,10 @@ const s = StyleSheet.create({
 
   integRow: {
     paddingHorizontal: 16, paddingVertical: 12,
-    borderLeftWidth: 4,
+    borderLeftWidth: 3,
   },
   integRowHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  integCategory: { fontSize: 14, fontWeight: '600' },
+  integCategory: { fontSize: 14, fontFamily: 'Nunito_500Medium', fontWeight: '500' },
   integPreview: { fontSize: 13, color: '#666666', lineHeight: 18 },
   chevron: { fontSize: 18 },
   rowDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 16 },
@@ -284,17 +283,17 @@ const s = StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#B07FFF',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#B07FFF',
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    elevation: 4,
   },
 
   // Action sheet
@@ -303,7 +302,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 24, paddingVertical: 14, gap: 16, minHeight: 64,
   },
-  actionLabel: { fontSize: 16, fontWeight: '600', color: '#1A1A1A' },
+  actionLabel: { fontSize: 16, fontWeight: '500', color: '#1A1A1A' },
   actionSubtitle: { fontSize: 12, color: '#999999', marginTop: 2 },
   actionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 24 },
 });

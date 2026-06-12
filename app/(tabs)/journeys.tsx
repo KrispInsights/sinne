@@ -39,28 +39,6 @@ function getPracticeIcon(practiceType: string): string {
   return 'circle-outline';
 }
 
-const INTEGRATION_NOTE_FIELDS: Array<keyof Integration> = [
-  'free_text',
-  'emotions_q1', 'emotions_q2', 'emotions_q3',
-  'body_q1', 'body_q2', 'body_q3',
-  'triggers_q1', 'triggers_q2', 'triggers_q3',
-  'patterns_q1', 'patterns_q2', 'patterns_q3',
-  'meaning_q1', 'meaning_q2', 'meaning_q3',
-  'realizations_q1', 'realizations_q2', 'realizations_q3',
-  'actions_q1', 'actions_q2', 'actions_q3',
-  'gratitude_q1', 'gratitude_q2', 'gratitude_q3',
-  'memories_q1', 'memories_q2', 'memories_q3',
-];
-
-function getIntegrationNote(integration: Integration): string | null {
-  for (const field of INTEGRATION_NOTE_FIELDS) {
-    const val = integration[field];
-    if (typeof val === 'string' && val.trim()) return val;
-  }
-  return null;
-}
-
-
 function BottomSheet({ visible, onDismiss, children }: { visible: boolean; onDismiss: () => void; children: React.ReactNode }) {
   const slideAnim = useRef(new Animated.Value(400)).current;
   const { bottom: safeBottom } = useSafeAreaInsets();
@@ -93,7 +71,7 @@ export default function JourneysScreen() {
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [sessionCounts, setSessionCounts] = useState<Record<string, number>>({});
   const [practiceTypes, setPracticeTypes] = useState<Record<string, string[]>>({});
-  const [descriptions, setDescriptions] = useState<Record<string, string>>({});
+  const [journeyEntries, setJourneyEntries] = useState<Record<string, Array<{ type: 'session' | 'integration'; practiceType?: string; date: string }>>>({});
   const [sheetOpen, setSheetOpen] = useState(false);
   const [showEndedJourneys, setShowEndedJourneys] = useState(false);
 
@@ -106,6 +84,9 @@ export default function JourneysScreen() {
 
         const counts: Record<string, number> = {};
         const types: Record<string, string[]> = {};
+        const entries: Record<string, Array<{ type: 'session' | 'integration'; practiceType?: string; date: string }>> = {};
+
+        // Process sessions
         sessions.forEach(({ session }) => {
           if (!session.journey_id) return;
           counts[session.journey_id] = (counts[session.journey_id] ?? 0) + 1;
@@ -113,26 +94,27 @@ export default function JourneysScreen() {
             const list = types[session.journey_id] ?? (types[session.journey_id] = []);
             if (!list.includes(session.practice_type)) list.push(session.practice_type);
           }
+          // Add to chronological entries
+          const entryList = entries[session.journey_id] ?? (entries[session.journey_id] = []);
+          entryList.push({ type: 'session', practiceType: session.practice_type, date: session.created_at });
         });
 
-        const byJourney: Record<string, Integration[]> = {};
+        // Process integrations
         integrations.forEach((i) => {
           if (!i.journey_id) return;
-          (byJourney[i.journey_id] ??= []).push(i);
+          const entryList = entries[i.journey_id] ?? (entries[i.journey_id] = []);
+          entryList.push({ type: 'integration', date: i.note_date || i.created_at });
         });
-        const descs: Record<string, string> = {};
-        Object.entries(byJourney).forEach(([jid, list]) => {
-          const sorted = [...list].sort((a, b) => a.note_date.localeCompare(b.note_date));
-          for (const integ of sorted) {
-            const note = getIntegrationNote(integ);
-            if (note) { descs[jid] = note; break; }
-          }
+
+        // Sort entries chronologically
+        Object.keys(entries).forEach((jid) => {
+          entries[jid].sort((a, b) => a.date.localeCompare(b.date));
         });
 
         setJourneys(js);
         setSessionCounts(counts);
         setPracticeTypes(types);
-        setDescriptions(descs);
+        setJourneyEntries(entries);
       })();
       return () => { cancelled = true; };
     }, [])
@@ -144,8 +126,7 @@ export default function JourneysScreen() {
   function renderJourneyCard(journey: Journey, idx: number) {
     const isActive = journey.status === 'active';
     const accent = JOURNEY_ACCENT_COLORS[idx % JOURNEY_ACCENT_COLORS.length];
-    const types = practiceTypes[journey.id] ?? [];
-    const description = descriptions[journey.id];
+    const entries = journeyEntries[journey.id] ?? [];
 
     // Calculate days elapsed
     let daysElapsed = 0;
@@ -170,21 +151,24 @@ export default function JourneysScreen() {
         <View style={[s.accentBar, { backgroundColor: accent }, !isActive && s.faded]} />
         <View style={[s.cardBody, !isActive && s.faded]}>
           <Text style={s.journeyName} numberOfLines={2}>{journey.name}</Text>
-          {description ? (
-            <Text style={s.description} numberOfLines={2}>{description}</Text>
-          ) : null}
-          {types.length > 0 && (
+          {entries.length > 0 && (
             <View style={s.iconsRow}>
-              {types.slice(0, 6).map((pt, idx) => {
-                const icon = getPracticeIcon(pt);
-                const color = getPracticeColor(pt);
-                return (
-                  <MaterialCommunityIcons key={`${pt}-${idx}`} name={icon as any} size={20} color={color} />
-                );
+              {entries.map((entry, idx) => {
+                if (entry.type === 'integration') {
+                  // Show integration icon (same as Integration tab)
+                  return (
+                    <MaterialCommunityIcons key={`integration-${idx}`} name="notebook-outline" size={20} color={accent} style={{ opacity: 0.7 }} />
+                  );
+                } else {
+                  // Show session/practice icon
+                  const icon = entry.practiceType ? getPracticeIcon(entry.practiceType) : 'circle-outline';
+                  const color = entry.practiceType ? getPracticeColor(entry.practiceType) : accent;
+                  return (
+                    <MaterialCommunityIcons key={`session-${idx}`} name={icon as any} size={20} color={color} style={{ opacity: 0.7 }} />
+                  );
+                }
               })}
-              {types.length > 6 && (
-                <Text style={s.iconOverflow}>+{types.length - 6}</Text>
-              )}
+             
             </View>
           )}
           {totalDays ? (
@@ -225,7 +209,7 @@ export default function JourneysScreen() {
           <Text style={s.subtitle}>Curated arcs of practice over time.</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/settings' as any)} hitSlop={8}>
-          <MaterialCommunityIcons name="cog-outline" size={24} color="#999999" />
+          <MaterialCommunityIcons name="cog-outline" size={20} color="#CCCCCC" />
         </TouchableOpacity>
       </View>
 
@@ -320,22 +304,21 @@ const s = StyleSheet.create({
   },
   title: { fontSize: 32, fontFamily: FONTS.display, color: COLORS.text },
   subtitle: { fontSize: 14, fontWeight: '400', color: COLORS.textTertiary, marginTop: 4 },
-  content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 120, gap: 12 },
+  content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 120, gap: 20 },
 
   sectionLabel: {
-    fontSize: 11, fontWeight: '600', color: COLORS.textTertiary,
+    fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
     textTransform: 'uppercase', letterSpacing: 1.2,
   },
 
   journeyCard: {
     backgroundColor: COLORS.card, borderRadius: RADII.card, overflow: 'hidden',
   },
-  accentBar: { height: 6, width: '100%' },
+  accentBar: { height: 4, width: '100%' },
   cardBody: { padding: 20, gap: 10 },
   faded: { opacity: 0.4 },
 
   journeyName: { fontSize: 18, fontFamily: FONTS.display, color: COLORS.text },
-  description: { fontSize: 13, fontWeight: '400', color: COLORS.textTertiary, lineHeight: 18 },
 
   iconsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   iconOverflow: { fontSize: 12, fontWeight: '400', color: COLORS.textTertiary, fontFamily: 'DMSans_400Regular' },
@@ -371,10 +354,10 @@ const s = StyleSheet.create({
 
   fab: {
     position: 'absolute', bottom: 20, right: 24,
-    width: 46, height: 46, borderRadius: 23,
+    width: 52, height: 52, borderRadius: 26,
     backgroundColor: COLORS.accent,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: COLORS.accent, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 6,
+    shadowColor: COLORS.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
   },
 
   sheet: {
@@ -390,7 +373,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 24, paddingVertical: 14, gap: 16, minHeight: 64,
   },
-  actionLabel: { fontSize: 16, fontWeight: '600', color: '#1A1A1A' },
+  actionLabel: { fontSize: 16, fontWeight: '500', color: '#1A1A1A' },
   actionSubtitle: { fontSize: 12, color: '#999999', marginTop: 2 },
   actionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 24 },
 });

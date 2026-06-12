@@ -46,7 +46,7 @@ export default function NewIntegrationScreen() {
             return (
               <TouchableOpacity
                 key={cat}
-                style={[s.card, { backgroundColor: data.tint }]}
+                style={[s.card, { backgroundColor: data.tint, borderColor: data.color }]}
                 onPress={() => router.push({ pathname: '/integration-entry', params: { category: cat } } as any)}
                 activeOpacity={0.75}
               >
@@ -78,6 +78,7 @@ const s = StyleSheet.create({
     width: '31%', minHeight: 80,
     borderRadius: 12, paddingVertical: 14, paddingHorizontal: 10,
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5,
   },
   cardName: { fontSize: 15, fontWeight: '600', textAlign: 'center', marginBottom: 3 },
   cardDesc: { fontSize: 11, color: '#999999', textAlign: 'center', lineHeight: 14 },

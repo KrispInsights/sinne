@@ -69,6 +69,13 @@ function formatChipDate(iso: string): string {
 
 // ---- Data constants ----
 
+// Wellness tones for nervous system selection states
+const WELLNESS_TONES: Record<string, string> = {
+  grounded: '#8FAE9A',    // Sage Green
+  activated: '#D6C2A1',   // Warm Sand
+  shutdown: '#A89ABF',    // Dusty Lavender
+};
+
 const NS_STATES = [
   { key: 'grounded',  labels: { plain: 'Grounded',  polyvagal: 'Ventral',     ifs: 'Self',           somatic: 'Grounded'  }, color: '#7AAE8A', icon: 'weather-sunny-outline' },
   { key: 'activated', labels: { plain: 'Activated', polyvagal: 'Sympathetic', ifs: 'Activated part', somatic: 'Activated' }, color: '#C9B96A', icon: 'lightning-bolt-outline' },
@@ -165,6 +172,7 @@ const ALL_PRACTICES = [
   'Other',
 ];
 
+// Most common practices shown by default (reduce cognitive load)
 const PRACTICE_ICONS: Record<string, string> = {
   'Breathwork': 'weather-windy',
   'Dance / movement therapy': 'human-handsup',
@@ -537,10 +545,10 @@ export default function NewSessionScreen() {
                   onPress={() => setShowJourneyPicker(true)}
                   activeOpacity={0.7}
                 >
-                  <Text style={ss.journeyPillText}>
-                    Journey: {activeJourneys.find((j) => j.id === linkedJourneyId)?.name ?? 'None'}
+                  <Text style={[ss.journeyPillText, !linkedJourneyId && { opacity: 0.6 }]}>
+                    {activeJourneys.find((j) => j.id === linkedJourneyId)?.name ?? 'No journey selected'}
                   </Text>
-                  <MaterialCommunityIcons name="chevron-down" size={14} color="#666666" />
+                  <MaterialCommunityIcons name="chevron-down" size={16} color="#B07FFF" />
                 </TouchableOpacity>
               </View>
             )}
@@ -555,7 +563,7 @@ export default function NewSessionScreen() {
 
             <Text style={ss.prompt}>What type of practice?</Text>
             <View style={ss.practiceList}>
-              {ALL_PRACTICES.map((p, idx) => {
+              {ALL_PRACTICES.map((p, idx, arr) => {
                 const sel = mainPractice === p;
                 const subtypes = PRACTICES_WITH_SUBTYPES[p];
                 return (
@@ -582,7 +590,7 @@ export default function NewSessionScreen() {
                         <MaterialCommunityIcons name="chevron-right" size={18} color="#CCCCCC" />
                       )}
                     </TouchableOpacity>
-                    {idx < ALL_PRACTICES.length - 1 && <View style={ss.practiceDivider} />}
+                    {idx < arr.length - 1 && <View style={ss.practiceDivider} />}
 
                     {sel && subtypes && (
                       <View style={ss.subtypeSection}>
@@ -617,39 +625,6 @@ export default function NewSessionScreen() {
                 );
               })}
             </View>
-
-            {activeJourneys.length > 0 && (
-              <>
-                <View style={{ height: 24 }} />
-                <Text style={ss.prompt}>Link to a journey?</Text>
-                <View style={{ gap: 8 }}>
-                  {activeJourneys.map((journey) => {
-                    const sel = linkedJourneyId === journey.id;
-                    const locked = isJourneyLocked && sel;
-                    return (
-                      <TouchableOpacity
-                        key={journey.id}
-                        style={[ss.journeyToggleRow, sel && ss.journeyToggleSelected]}
-                        onPress={() => { if (!isJourneyLocked) setLinkedJourneyId(sel ? null : journey.id); }}
-                        activeOpacity={isJourneyLocked ? 1 : 0.75}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={ss.journeyToggleName}>{journey.name}</Text>
-                          <Text style={ss.journeyToggleSub}>{locked ? 'Locked to this session' : 'Active journey'}</Text>
-                        </View>
-                        {locked ? (
-                          <MaterialCommunityIcons name="lock-outline" size={16} color={PRACTICE_COLOR} />
-                        ) : (
-                          <View style={[ss.journeyCheckbox, sel && ss.journeyCheckboxChecked]}>
-                            {sel && <Text style={ss.journeyCheckmark}>✓</Text>}
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </>
-            )}
             <View style={{ height: 80 }} />
           </ScrollView>
           <View style={[ss.footerDots, { paddingBottom: Math.max(safeBottom + 16, 32) }]}>
@@ -678,20 +653,21 @@ export default function NewSessionScreen() {
             <View style={{ gap: 12 }}>
               {NS_STATES.map((st) => {
                 const sel = nervousState === st.key;
+                const wellnessTone = WELLNESS_TONES[st.key] ?? st.color;
                 return (
                   <TouchableOpacity
                     key={st.key}
-                    style={[ss.nsStackedCard, sel && { borderColor: st.color, backgroundColor: hexToRgba(st.color, 0.06) }]}
+                    style={[ss.nsStackedCard, sel && { borderColor: wellnessTone, borderWidth: 2, backgroundColor: hexToRgba(wellnessTone, 0.15) }]}
                     onPress={() => handleNsSelect(st.key)}
-                    activeOpacity={0.75}
+                    activeOpacity={1}
                   >
                     <View style={ss.nsStackedCardContent}>
-                      <View style={[ss.nsStackedDot, { backgroundColor: st.color }]} />
+                      <View style={[ss.nsStackedDot, { backgroundColor: wellnessTone }]} />
                       <View style={{ flex: 1 }}>
-                        <Text style={[ss.nsStackedStateName, { color: st.color }]}>{st.labels[vocab]}</Text>
+                        <Text style={[ss.nsStackedStateName, { color: sel ? wellnessTone : '#1A1A1A' }]}>{st.labels[vocab]}</Text>
                       </View>
                       {sel && (
-                        <View style={[ss.nsCheckBadge, { backgroundColor: st.color, position: 'relative', top: 0, right: 0 }]}>
+                        <View style={[ss.nsCheckBadge, { backgroundColor: wellnessTone, position: 'relative', top: 0, right: 0 }]}>
                           <Text style={ss.nsCheckBadgeMark}>✓</Text>
                         </View>
                       )}
@@ -722,14 +698,14 @@ export default function NewSessionScreen() {
                 return (
                   <TouchableOpacity
                     key={opt.label}
-                    style={[ss.nsStackedCard, sel && { borderColor: opt.color, backgroundColor: hexToRgba(opt.color, 0.06) }]}
+                    style={[ss.nsStackedCard, sel && { borderColor: opt.color, borderWidth: 2, backgroundColor: hexToRgba(opt.color, 0.15) }]}
                     onPress={() => setEnergeticShift(sel ? '' : opt.label)}
-                    activeOpacity={0.75}
+                    activeOpacity={1}
                   >
                     <View style={ss.nsStackedCardContent}>
                       <View style={[ss.nsStackedDot, { backgroundColor: opt.color }]} />
                       <View style={{ flex: 1 }}>
-                        <Text style={[ss.nsStackedStateName, { color: opt.color }]}>{opt.label}</Text>
+                        <Text style={[ss.nsStackedStateName, { color: sel ? opt.color : '#1A1A1A' }]}>{opt.label}</Text>
                       </View>
                       {sel && (
                         <View style={[ss.nsCheckBadge, { backgroundColor: opt.color, position: 'relative', top: 0, right: 0 }]}>
@@ -784,6 +760,7 @@ export default function NewSessionScreen() {
         <View style={{ flex: 1 }}>
           <ScrollView style={{ flex: 1 }} contentContainerStyle={[ss.body, { paddingBottom: Math.max(safeBottom + 80, 100) }]} showsVerticalScrollIndicator={false}>
             <Text style={ss.prompt}>What was emotionally present?</Text>
+
             {EMOTION_CLUSTERS.map((cluster) => (
               <View key={cluster.name} style={[ss.clusterBlock, { backgroundColor: hexToRgba(cluster.text, 0.04) }]}>
                 <Text style={[ss.clusterName, { color: cluster.text }]}>{cluster.name.toUpperCase()}</Text>
@@ -914,9 +891,9 @@ export default function NewSessionScreen() {
                 return (
                   <View key={opt.key}>
                     <TouchableOpacity
-                      style={[ss.connectionRow, sel && { borderColor: opt.color, backgroundColor: hexToRgba(opt.color, 0.08) }]}
+                      style={[ss.connectionRow, sel && { borderColor: opt.color, borderWidth: 2, backgroundColor: hexToRgba(opt.color, 0.12) }]}
                       onPress={() => setConnectionType(sel ? '' : opt.key)}
-                      activeOpacity={0.75}
+                      activeOpacity={1}
                     >
                       <View style={[ss.nsStackedDot, { backgroundColor: opt.color }]} />
                       <Text style={[ss.connectionRowText, sel && { color: opt.color }]}>{opt.label}</Text>
@@ -1015,7 +992,7 @@ export default function NewSessionScreen() {
         <TouchableOpacity onPress={back} style={ss.backBtn}><Text style={ss.backBtnText}>‹</Text></TouchableOpacity>
       </View>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={ss.body} showsVerticalScrollIndicator={false}>
-        <Text style={ss.prompt}>Review your session</Text>
+        <Text style={ss.detailsLabel}>Details</Text>
 
         {/* Practice */}
         <View style={ss.summaryCard}>
@@ -1063,12 +1040,19 @@ export default function NewSessionScreen() {
         <View style={ss.summaryCard}>
           <Text style={ss.summaryCardLabel}>BODY</Text>
           {bodySensations.length > 0 ? (
-            <Text style={ss.summaryCardValue}>
-              {bodySensations.map((b) => {
+            <View style={{ gap: 8, marginTop: 4 }}>
+              {bodySensations.map((b, idx) => {
                 const r = BODY_REGIONS.find((x) => x.key === b.region);
-                return b.quality ? `${r?.label} (${b.quality})` : r?.label;
-              }).join(', ')}
-            </Text>
+                return (
+                  <View key={idx} style={ss.bodyRegionRow}>
+                    <View style={[ss.bodyRegionDotReview, { backgroundColor: r?.color || '#CCCCCC' }]} />
+                    <Text style={ss.summaryCardValue}>
+                      {r?.label}{b.quality ? ` (${b.quality})` : ''}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
           ) : (
             <Text style={ss.summaryCardValue}>—</Text>
           )}
@@ -1142,7 +1126,15 @@ const ss = StyleSheet.create({
   backBtnText: { fontSize: 28, color: '#B07FFF', lineHeight: 32 },
   stepLabel: { fontSize: 12, color: '#999999', fontWeight: '500' },
 
-  prompt: { fontSize: 16, fontWeight: '500', color: '#1A1A1A', marginBottom: 16, lineHeight: 22 },
+  prompt: {
+    fontSize: 18, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A',
+    marginBottom: 20, lineHeight: 26,
+  },
+
+  detailsLabel: {
+    fontSize: 11, fontWeight: '600', color: '#999999',
+    letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 12,
+  },
 
   body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20 },
 
@@ -1160,17 +1152,25 @@ const ss = StyleSheet.create({
   durationGridRow: { flexDirection: 'row', gap: 10 },
   durationChip: {
     flex: 1, height: 52, borderRadius: 16,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EEEEEC',
     alignItems: 'center', justifyContent: 'center',
   },
   durationChipCustom: {
     height: 52, borderRadius: 16,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EEEEEC',
     alignItems: 'center', justifyContent: 'center',
   },
-  durationChipSelected: { backgroundColor: '#B07FFF' },
+  durationChipSelected: {
+    backgroundColor: '#F2EEF9',
+    borderColor: '#B07FFF',
+    borderWidth: 1.5,
+  },
   durationChipText: { fontSize: 15, fontWeight: '600', color: '#1A1A1A', fontFamily: 'Nunito_600SemiBold' },
-  durationChipTextSelected: { color: '#FFFFFF' },
+  durationChipTextSelected: { color: '#B07FFF' },
 
   // Custom duration input
   customDurationRow: { marginBottom: 20 },
@@ -1202,16 +1202,23 @@ const ss = StyleSheet.create({
   bodyRegionDot: { width: 12, height: 12, borderRadius: 6, flexShrink: 0 },
   bodyChakraLabel: { fontSize: 11, color: '#999999' },
 
+  bodyRegionRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  bodyRegionDotReview: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
+
   subtypeSection: {
     marginTop: 4, marginBottom: 12, paddingTop: 10, paddingLeft: 36,
   },
   subtypeChip: {
     paddingHorizontal: 11, paddingVertical: 7, borderRadius: 20,
-    backgroundColor: '#F6F0FF', borderWidth: 1, borderColor: '#E0D0FF',
+    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EEEEEC',
   },
-  subtypeChipSelected: { backgroundColor: PRACTICE_COLOR, borderColor: PRACTICE_COLOR },
-  subtypeChipText: { fontSize: 12, fontWeight: '500', color: PRACTICE_COLOR },
-  subtypeChipTextSelected: { color: '#FFFFFF' },
+  subtypeChipSelected: {
+    backgroundColor: '#F2EEF9',
+    borderColor: PRACTICE_COLOR,
+    borderWidth: 1.5,
+  },
+  subtypeChipText: { fontSize: 12, fontWeight: '500', color: '#1A1A1A' },
+  subtypeChipTextSelected: { color: PRACTICE_COLOR },
 
   // Date chip / journey link
   journeyToggleRow: {
@@ -1276,7 +1283,7 @@ const ss = StyleSheet.create({
   },
   connectionRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#EEEEEC',
+    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EEEEEC',
     borderRadius: 16, paddingVertical: 18, paddingHorizontal: 20,
     shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
   },
@@ -1380,12 +1387,13 @@ const ss = StyleSheet.create({
   // Journey selector
   journeySelectorRow: { marginBottom: 16 },
   journeyPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#F0F0F0', borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 8,
-    alignSelf: 'flex-start',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    width: '100%', height: 52,
+    backgroundColor: 'rgba(176, 127, 255, 0.12)', borderRadius: 16,
+    borderWidth: 1.5, borderColor: '#B07FFF',
+    paddingHorizontal: 16,
   },
-  journeyPillText: { fontSize: 14, fontWeight: '400', color: '#666666', fontFamily: 'Nunito_400Regular' },
+  journeyPillText: { fontSize: 15, fontWeight: '500', color: '#B07FFF', fontFamily: 'Nunito_500Medium', flex: 1 },
   noJourneyRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16,
   },

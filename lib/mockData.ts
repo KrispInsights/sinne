@@ -4,7 +4,7 @@ export const MOCK_USER_ID = 'mock-user-001';
 
 export const mockProfile: Profile = {
   id: MOCK_USER_ID,
-  preferred_name: 'Alex',
+  preferred_name: 'Kris',
   age_range: '25–34',
   sex: 'Prefer not to say',
   country: 'United States',

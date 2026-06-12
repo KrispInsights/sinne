@@ -56,10 +56,10 @@ export const RADII = {
 
 export const CARD_SHADOW: ViewStyle = {
   shadowColor: '#000000',
-  shadowOpacity: 0.05,
-  shadowRadius: 16,
+  shadowOpacity: 0.02,
+  shadowRadius: 12,
   shadowOffset: { width: 0, height: 4 },
-  elevation: 3,
+  elevation: 2,
 };
 
 export const CARD_STYLE: ViewStyle = {

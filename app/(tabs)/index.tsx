@@ -519,6 +519,7 @@ function buildSmoothPath(points: Array<{ x: number; y: number }>): string {
 function ArcChart({ sessions, integrations, framework }: { sessions: SessionWithCheckin[]; integrations: Integration[]; framework: string }) {
   const [rowW, setRowW] = useState(SCREEN_W - 80);
   const [selected, setSelected] = useState<number | null>(null);
+  const [showInfoTooltip, setShowInfoTooltip] = useState(false);
 
   const CHART_H = 200;
   const DATE_LABEL_H = 20;
@@ -744,9 +745,26 @@ function ArcChart({ sessions, integrations, framework }: { sessions: SessionWith
         </>
       )}
 
-      <Text style={s.arcCaption}>
-        Tap any point to see session details. Position shows nervous system state.
-      </Text>
+      {/* Info icon with tooltip */}
+      <TouchableOpacity
+        style={s.arcInfoIcon}
+        onPress={() => setShowInfoTooltip(!showInfoTooltip)}
+        activeOpacity={0.7}
+      >
+        <MaterialCommunityIcons name="information-outline" size={18} color="#BBBBBB" />
+      </TouchableOpacity>
+
+      {showInfoTooltip && (
+        <TouchableOpacity
+          style={s.arcInfoTooltip}
+          onPress={() => setShowInfoTooltip(false)}
+          activeOpacity={1}
+        >
+          <Text style={s.arcInfoTooltipText}>
+            Tap any point to see session details. Position on the chart shows nervous system state.
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -1233,7 +1251,7 @@ function JourneyDetailSheet({
           <>
             {/* Edit button top-right */}
             <View style={{ alignItems: 'flex-end', marginBottom: 2 }}>
-              <TouchableOpacity onPress={openEdit} hitSlop={8}>
+              <TouchableOpacity onPress={() => { onDismiss(); router.push({ pathname: '/journey/[id]', params: { id: journey.id } } as any); }} hitSlop={8}>
                 <Text style={{ fontSize: 14, fontWeight: '500', color: '#B07FFF' }}>Edit</Text>
               </TouchableOpacity>
             </View>
@@ -1328,6 +1346,7 @@ export default function HomeScreen() {
   const [integrationPromptOpen, setIntegrationPromptOpen] = useState(false);
   const [promptedSessionId, setPromptedSessionId] = useState<string | null>(null);
   const savedToastAnim = useRef(new Animated.Value(0)).current;
+  const dismissedThisSessionRef = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -1345,16 +1364,22 @@ export default function HomeScreen() {
           // Check if we should show integration prompt
           if (sv.length > 0) {
             const latestSession = sv[0];
-            const sessionTime = new Date(latestSession.created_at).getTime();
-            const hasIntegrationAfter = integ.some((i) => new Date(i.created_at).getTime() > sessionTime);
 
-            if (!hasIntegrationAfter) {
-              const dismissedKey = `integration_prompt_dismissed_${latestSession.id}`;
-              const alreadyDismissed = await AsyncStorage.getItem(dismissedKey);
-              if (!alreadyDismissed) {
-                setPromptedSessionId(latestSession.id);
-                setIntegrationPromptOpen(true);
-              }
+            // Rule 1: Check if this session was already prompted and dismissed
+            const lastPromptedId = await AsyncStorage.getItem('lastPromptedSessionId');
+            const alreadyPrompted = lastPromptedId === latestSession.id;
+
+            // Rule 2: Check if any integration exists AFTER this session
+            const sessionTime = new Date(latestSession.created_at).getTime();
+            const hasIntegrationAfter = integ.some((i) => {
+              const integTime = new Date(i.created_at || i.note_date).getTime();
+              return integTime > sessionTime;
+            });
+
+            // Show popup only if: session not previously dismissed AND no integration after session AND not dismissed this session
+            if (!alreadyPrompted && !hasIntegrationAfter && !dismissedThisSessionRef.current) {
+              setPromptedSessionId(latestSession.id);
+              setIntegrationPromptOpen(true);
             }
           }
         }
@@ -1384,8 +1409,9 @@ export default function HomeScreen() {
   }
 
   async function handlePromptDismiss() {
+    dismissedThisSessionRef.current = true;
     if (promptedSessionId) {
-      await AsyncStorage.setItem(`integration_prompt_dismissed_${promptedSessionId}`, 'true');
+      await AsyncStorage.setItem('lastPromptedSessionId', promptedSessionId);
     }
     setIntegrationPromptOpen(false);
   }
@@ -1438,7 +1464,7 @@ export default function HomeScreen() {
           <View style={s.headerTopRow}>
             <Text style={s.headerDate}>{formatHeaderDate()}</Text>
             <TouchableOpacity onPress={() => router.push('/settings' as any)} hitSlop={8}>
-              <MaterialCommunityIcons name="cog-outline" size={24} color="#666666" />
+              <MaterialCommunityIcons name="cog-outline" size={20} color="#CCCCCC" />
             </TouchableOpacity>
           </View>
           <View style={s.greetingRow}>
@@ -1512,20 +1538,22 @@ export default function HomeScreen() {
                     <MaterialCommunityIcons name="chevron-down" size={8} color="#666666" />
                   </TouchableOpacity>
                 )}
-                <View style={s.somaToggle}>
-                  {SOMA_TABS.map(({ key, icon }) => {
-                    const active = somaView === key;
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        onPress={() => setSomaView(key)}
-                        activeOpacity={0.7}
-                        style={[s.somaToggleBtn, active && s.somaToggleBtnActive]}
-                      >
-                        <MaterialCommunityIcons name={icon as any} size={18} color={active ? '#B07FFF' : '#999999'} />
-                      </TouchableOpacity>
-                    );
-                  })}
+                <View style={{ marginLeft: 'auto' }}>
+                  <View style={s.somaToggle}>
+                    {SOMA_TABS.map(({ key, icon }) => {
+                      const active = somaView === key;
+                      return (
+                        <TouchableOpacity
+                          key={key}
+                          onPress={() => setSomaView(key)}
+                          activeOpacity={0.7}
+                          style={[s.somaToggleBtn, active && s.somaToggleBtnActive]}
+                        >
+                          <MaterialCommunityIcons name={icon as any} size={18} color={active ? '#B07FFF' : '#999999'} />
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
               </View>
               {(() => {
@@ -1557,7 +1585,7 @@ export default function HomeScreen() {
                   <Text style={s.lastSessionDate}>{getRelativeDate(lastSession.session.created_at)}</Text>
                 </View>
                 <View style={s.lastSessionBody}>
-                  <View style={{ flex: 1 }}>
+                  <View style={s.lastSessionLeft}>
                     <Text style={s.lastSessionTitle}>{lastSession.session.practice_type || 'Session'}</Text>
                     <View style={s.chipsRow}>
                       {lastSession.session.duration_minutes ? (
@@ -1567,9 +1595,11 @@ export default function HomeScreen() {
                       ) : null}
                       {lastNsName ? (
                         <View style={[s.wellnessChip, { backgroundColor: lastWellnessChip.bg }]}>
-                          <Text style={[s.wellnessChipText, { color: lastWellnessChip.text }]}>{lastNsName}</Text>
+                          <Text style={[s.wellnessChipText, { color: lastWellnessChip.text }]}>{lastNsName.charAt(0).toUpperCase() + lastNsName.slice(1)}</Text>
                         </View>
                       ) : null}
+                    </View>
+                    <View style={s.chipsRow}>
                       {lastTopEmotions.map((tag) => (
                         <View key={tag} style={[s.emotionChip, { backgroundColor: (EMOTION_TAG_COLOR[tag] ?? '#9B7FBF') + '26' }]}>
                           <Text style={[s.emotionChipText, { color: EMOTION_TAG_COLOR[tag] ?? '#9B7FBF' }]}>
@@ -1578,14 +1608,13 @@ export default function HomeScreen() {
                         </View>
                       ))}
                     </View>
-                    {lastSession.checkin?.elaboration_note ? (
-                      <Text style={s.lastSessionNote} numberOfLines={1}>{lastSession.checkin.elaboration_note}</Text>
-                    ) : null}
                   </View>
-                  <BodyFigureEllipses
-                    width={70}
-                    bodySensations={lastSession.checkin?.body_sensations ?? []}
-                  />
+                  <View style={s.lastSessionRight}>
+                    <BodyFigureEllipses
+                      width={80}
+                      bodySensations={lastSession.checkin?.body_sensations ?? []}
+                    />
+                  </View>
                 </View>
               </TouchableOpacity>
             )}
@@ -1642,8 +1671,8 @@ export default function HomeScreen() {
           {lastSession && (
             <Text style={s.integrationPromptSubtitle}>
               After your {lastSession.session.practice_type} session on{' '}
-              {new Date(lastSession.session.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} —
-              have you had a chance to sit with what came up?
+              {new Date(lastSession.session.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.
+              Have you had a chance to sit with what came up?
             </Text>
           )}
           <View style={s.integrationPromptButtons}>
@@ -1733,7 +1762,7 @@ export default function HomeScreen() {
 // ---- Styles ----
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F2F1F6' },
+  safe: { flex: 1, backgroundColor: '#FAFAFA' },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 100 },
 
@@ -1755,17 +1784,17 @@ const s = StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#B07FFF',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#B07FFF',
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    elevation: 4,
   },
 
   // Journey detail sheet
@@ -1808,7 +1837,7 @@ const s = StyleSheet.create({
   emptySecondary: { fontSize: 13, fontWeight: '400', fontStyle: 'italic', color: '#999999', textAlign: 'center' },
 
   // Populated
-  populatedContent: { gap: 12, paddingHorizontal: 20, paddingTop: 12 },
+  populatedContent: { gap: 20, paddingHorizontal: 20, paddingTop: 12 },
 
   // Cards
   card: { backgroundColor: '#FFFFFF', borderRadius: 20 },
@@ -1816,7 +1845,7 @@ const s = StyleSheet.create({
 
   // Section labels
   sectionLabel: {
-    fontSize: 11, fontWeight: '600', color: '#999999',
+    fontSize: 11, fontWeight: '500', color: '#999999',
     letterSpacing: 1.2, textTransform: 'uppercase',
   },
 
@@ -1840,7 +1869,7 @@ const s = StyleSheet.create({
   },
   somaFilterPill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#F0F0F0', borderRadius: 20,
+    backgroundColor: '#F0F0F0', borderRadius: 12, height: 36,
     paddingHorizontal: 14, paddingVertical: 6,
     alignSelf: 'flex-start',
   },
@@ -1851,8 +1880,8 @@ const s = StyleSheet.create({
   somaControlsRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16,
   },
-  somaToggle: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F0F0', borderRadius: 999, padding: 3, gap: 2 },
-  somaToggleBtn: { width: 32, height: 32, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  somaToggle: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F0F0', borderRadius: 12, height: 36, padding: 3, gap: 2 },
+  somaToggleBtn: { width: 30, height: 30, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   somaToggleBtnActive: {
     backgroundColor: '#FFFFFF',
     shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2,
@@ -1869,7 +1898,14 @@ const s = StyleSheet.create({
   arcLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   arcLegendDot: { width: 8, height: 8, borderRadius: 4 },
   arcLegendText: { fontSize: 12, fontWeight: '400', color: '#666666' },
-  arcCaption: { fontSize: 11, fontWeight: '400', fontStyle: 'italic', color: '#999999', marginTop: 12, lineHeight: 16 },
+  arcInfoIcon: { position: 'absolute', bottom: 12, right: 12 },
+  arcInfoTooltip: {
+    position: 'absolute', bottom: 36, right: 12,
+    backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12,
+    maxWidth: 240,
+    shadowColor: '#000000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 4,
+  },
+  arcInfoTooltipText: { fontSize: 13, fontFamily: 'Nunito_400Regular', color: '#666666', lineHeight: 18 },
   arcTooltip: {
     position: 'absolute', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16,
     shadowColor: '#000000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 4,
@@ -1881,8 +1917,10 @@ const s = StyleSheet.create({
   // Last session card
   lastSessionTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   lastSessionDate: { fontSize: 12, fontWeight: '400', color: '#999999' },
-  lastSessionBody: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  lastSessionTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A', marginBottom: 8 },
+  lastSessionBody: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  lastSessionLeft: { flex: 1, flexDirection: 'column', gap: 6 },
+  lastSessionRight: { width: 80, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' },
+  lastSessionTitle: { fontSize: 18, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A' },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   greyChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#F0F0F0' },
   greyChipText: { fontSize: 13, fontWeight: '500', color: '#666666' },
@@ -1890,7 +1928,6 @@ const s = StyleSheet.create({
   wellnessChipText: { fontSize: 13, fontWeight: '500' },
   emotionChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6 },
   emotionChipText: { fontSize: 13, fontWeight: '500' },
-  lastSessionNote: { fontSize: 13, fontWeight: '400', color: '#999999', marginTop: 8 },
 
   // Bottom sheets (general)
   sheet: {
@@ -1906,7 +1943,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 24, paddingVertical: 14, gap: 16, minHeight: 64,
   },
-  actionLabel: { fontSize: 16, fontWeight: '600', color: '#1A1A1A' },
+  actionLabel: { fontSize: 16, fontWeight: '500', color: '#1A1A1A' },
   actionSubtitle: { fontSize: 12, color: '#999999', marginTop: 2 },
   actionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 24 },
 
@@ -1948,8 +1985,8 @@ const s = StyleSheet.create({
   bkRegionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
   bkRegionDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
   bkRegionName: { width: 110, fontSize: 14, fontWeight: '400', color: '#1A1A1A', textTransform: 'capitalize' },
-  bkRegionTrack: { flex: 1, height: 5, borderRadius: 2.5, backgroundColor: '#F0F0F0', overflow: 'hidden' },
-  bkRegionBar: { height: 5, borderRadius: 2.5 },
+  bkRegionTrack: { flex: 1, height: 10, borderRadius: 5, backgroundColor: '#F0F0F0', overflow: 'hidden' },
+  bkRegionBar: { height: 10, borderRadius: 5 },
   bkRegionCount: { fontSize: 14, fontWeight: '600', color: '#1A1A1A', minWidth: 20, textAlign: 'right' },
 
   // Session detail sheet

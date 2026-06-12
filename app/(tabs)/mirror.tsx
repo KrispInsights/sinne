@@ -328,7 +328,7 @@ export default function MirrorScreen() {
           <Text style={s.subtitle}>Reflections drawn from your practice.</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/settings' as any)} hitSlop={8}>
-          <MaterialCommunityIcons name="cog-outline" size={24} color="#999999" />
+          <MaterialCommunityIcons name="cog-outline" size={20} color="#CCCCCC" />
         </TouchableOpacity>
       </View>
 
@@ -475,7 +475,7 @@ const s = StyleSheet.create({
   title: { fontSize: 32, fontFamily: FONTS.display, color: COLORS.text },
   subtitle: { fontSize: 14, fontWeight: '400', color: COLORS.textTertiary, marginTop: 4 },
 
-  content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 60, gap: 12 },
+  content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 60, gap: 20 },
 
   banner: {
     borderRadius: RADII.card, padding: 24,
@@ -487,7 +487,7 @@ const s = StyleSheet.create({
     borderRadius: 24, paddingHorizontal: 28, height: 48,
     alignItems: 'center', justifyContent: 'center',
   },
-  bannerBtnText: { fontSize: 15, fontWeight: '600', color: COLORS.accent },
+  bannerBtnText: { fontSize: 15, fontWeight: '500', color: COLORS.accent },
 
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
@@ -500,7 +500,7 @@ const s = StyleSheet.create({
 
   markersRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
   markerCard: { flex: 1, borderRadius: 16, padding: 14, alignItems: 'flex-start' },
-  markerCount: { fontSize: 24, fontWeight: '700' },
+  markerCount: { fontSize: 24, fontWeight: '600' },
   markerLabel: { fontSize: 11, fontWeight: '500', color: COLORS.textTertiary },
   markerSubLabel: { fontSize: 12, fontWeight: '400', color: COLORS.textTertiary, marginTop: 2, marginBottom: 6 },
   markerTheme: { fontSize: 14, fontWeight: '600', marginTop: 6 },

@@ -567,7 +567,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
     backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EAE4DC',
   },
-  chipSelected: { backgroundColor: '#6B5E4E', borderColor: '#6B5E4E' },
+  chipSelected: { backgroundColor: '#B07FFF', borderColor: '#B07FFF' },
   chipText: { fontSize: 13, fontWeight: '500', color: '#3a2e25' },
   chipTextSelected: { color: '#FFFFFF' },
   card: {

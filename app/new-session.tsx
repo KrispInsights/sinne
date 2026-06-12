@@ -71,9 +71,9 @@ function formatChipDate(iso: string): string {
 
 // Wellness tones for nervous system selection states
 const WELLNESS_TONES: Record<string, string> = {
-  grounded: '#8FAE9A',    // Sage Green
-  activated: '#D6C2A1',   // Warm Sand
-  shutdown: '#A89ABF',    // Dusty Lavender
+  grounded: '#6B9E7A',
+  activated: '#C4993A',
+  shutdown: '#7B6BAE',
 };
 
 const NS_STATES = [
@@ -657,7 +657,7 @@ export default function NewSessionScreen() {
                 return (
                   <TouchableOpacity
                     key={st.key}
-                    style={[ss.nsStackedCard, sel && { borderColor: wellnessTone, borderWidth: 2, backgroundColor: hexToRgba(wellnessTone, 0.15) }]}
+                    style={sel ? [ss.nsStackedCard, ss.nsStackedCardSelected, { borderColor: wellnessTone, backgroundColor: st.key === 'grounded' ? '#EDF5F0' : st.key === 'activated' ? '#FBF5E8' : '#EEEAF5' }] : ss.nsStackedCard}
                     onPress={() => handleNsSelect(st.key)}
                     activeOpacity={1}
                   >
@@ -678,6 +678,9 @@ export default function NewSessionScreen() {
             </View>
           </View>
         </ScrollView>
+        <View style={[ss.footerDots, { paddingBottom: Math.max(safeBottom + 16, 32) }]}>
+          <ProgressDots current={2} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -698,7 +701,7 @@ export default function NewSessionScreen() {
                 return (
                   <TouchableOpacity
                     key={opt.label}
-                    style={[ss.nsStackedCard, sel && { borderColor: opt.color, borderWidth: 2, backgroundColor: hexToRgba(opt.color, 0.15) }]}
+                    style={sel ? [ss.nsStackedCard, ss.nsStackedCardSelected, { borderColor: opt.color, backgroundColor: opt.label === 'Something released' ? '#EBF3F8' : opt.label === 'Something shifted' ? '#F0EBF8' : '#F5F5F5' }] : ss.nsStackedCard}
                     onPress={() => setEnergeticShift(sel ? '' : opt.label)}
                     activeOpacity={1}
                   >
@@ -1239,9 +1242,13 @@ const ss = StyleSheet.create({
 
   // Step 2 stacked cards
   nsStackedCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 2, borderColor: '#EEEEEC',
+    backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1.5, borderColor: '#EEEEEC',
     paddingHorizontal: 20, paddingVertical: 18,
     shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
+  },
+  nsStackedCardSelected: {
+    borderWidth: 2,
+    shadowOpacity: 0.10,
   },
   nsStackedCardContent: {
     flexDirection: 'row', alignItems: 'center', gap: 14,

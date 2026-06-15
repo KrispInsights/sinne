@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { createIntegration, getActiveJourneys } from '@/lib/storage';
 import type { CreateIntegrationInput, Journey } from '@/lib/types';
+import { COLORS } from '@/lib/theme';
 
 // ---- Category colors ----
 
@@ -290,25 +291,23 @@ export default function IntegrationEntryScreen() {
               </View>
             </View>
           )}
-        </ScrollView>
 
-        <View style={[s.footer, { paddingBottom: Math.max(safeBottom, 16) }]}>
           <TouchableOpacity
-            style={[s.saveBtn, { backgroundColor: accentColor }]}
+            style={[s.saveBtn, { backgroundColor: accentColor, marginTop: 24, marginBottom: 32 }]}
             onPress={handleSave}
             disabled={saving}
             activeOpacity={0.85}
           >
             <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Save'}</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: COLORS.background },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 12,
@@ -338,7 +337,7 @@ const s = StyleSheet.create({
     fontSize: 15, fontFamily: 'DMSerifDisplay_400Regular', marginBottom: 8, lineHeight: 22,
   },
   questionInput: {
-    fontSize: 15, color: '#1A1A1A', lineHeight: 22, minHeight: 56,
+    fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#1A1A1A', lineHeight: 22, minHeight: 56,
     padding: 0,
   },
 
@@ -351,8 +350,8 @@ const s = StyleSheet.create({
     marginTop: 12, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#E0E0E0',
   },
   journeySectionLabel: {
-    fontSize: 11, fontFamily: 'Nunito_600SemiBold', fontWeight: '600',
-    color: '#999999', letterSpacing: 0.88,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500',
+    color: '#999999', letterSpacing: 1.2,
     textTransform: 'uppercase', marginBottom: 8,
   },
   journeySectionPrompt: {
@@ -380,10 +379,9 @@ const s = StyleSheet.create({
     marginBottom: 10, lineHeight: 22, opacity: 0.7,
   },
 
-  footer: { paddingHorizontal: 20, paddingTop: 12, backgroundColor: '#FFFFFF' },
   saveBtn: {
     borderRadius: 12, height: 56,
     alignItems: 'center', justifyContent: 'center',
   },
-  saveBtnText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+  saveBtnText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
 });

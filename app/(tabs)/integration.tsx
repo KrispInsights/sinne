@@ -8,6 +8,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { getIntegrations } from '@/lib/storage';
 import type { Integration } from '@/lib/types';
 import { BottomSheet } from '@/components/BottomSheet';
+import { COLORS, OPTION_TEXT } from '@/lib/theme';
 
 // ---- Category metadata ----
 
@@ -226,7 +227,7 @@ export default function IntegrationScreen() {
 // ---- Styles ----
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FAFAFA' },
+  safe: { flex: 1, backgroundColor: COLORS.background },
   content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 60 },
 
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
@@ -248,7 +249,7 @@ const s = StyleSheet.create({
 
   logSection: {},
   logSectionLabel: {
-    fontSize: 11, fontWeight: '500', color: '#999999',
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
     textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 12,
   },
 
@@ -264,8 +265,8 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   dateHeader: {
-    fontSize: 11, fontWeight: '500', color: '#999999',
-    letterSpacing: 0.7, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 6,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    letterSpacing: 1.2, textTransform: 'uppercase', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 6,
   },
 
   integRow: {
@@ -273,8 +274,8 @@ const s = StyleSheet.create({
     borderLeftWidth: 3,
   },
   integRowHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  integCategory: { fontSize: 14, fontFamily: 'Nunito_500Medium', fontWeight: '500' },
-  integPreview: { fontSize: 13, color: '#666666', lineHeight: 18 },
+  integCategory: { fontFamily: 'Nunito_500Medium', fontSize: 14, fontWeight: '500' },
+  integPreview: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#666666', lineHeight: 22 },
   chevron: { fontSize: 18 },
   rowDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 16 },
 
@@ -302,7 +303,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 24, paddingVertical: 14, gap: 16, minHeight: 64,
   },
-  actionLabel: { fontSize: 16, fontWeight: '500', color: '#1A1A1A' },
-  actionSubtitle: { fontSize: 12, color: '#999999', marginTop: 2 },
+  actionLabel: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#1A1A1A' },
+  actionSubtitle: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: '#999999', marginTop: 2 },
   actionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 24 },
 });

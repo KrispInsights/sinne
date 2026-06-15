@@ -6,14 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { getJourneys, getSessions, closeJourney, reopenJourney, deleteJourney } from '@/lib/storage';
 import type { Journey, SessionWithCheckin } from '@/lib/types';
-
-const CARD_SHADOW = {
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.06,
-  shadowRadius: 12,
-  elevation: 3,
-} as const;
+import { COLORS, FONTS, CARD_SHADOW, OPTION_TEXT } from '@/lib/theme';
 
 const STATE_COLORS: Record<string, string> = {
   settled: '#7AAE8A',
@@ -125,24 +118,26 @@ export default function JourneyDetailScreen() {
             {journey.status === 'active' ? 'Active' : 'Ended'}
           </Text>
         </View>
-        <TouchableOpacity onPress={() => { /* TODO: Edit journey */ }} style={s.editBtn}>
+        <TouchableOpacity onPress={() => router.push({ pathname: '/new-journey', params: { editId: journey.id } } as any)} style={s.editBtn}>
           <Text style={s.editBtnText}>Edit</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
-        <Text style={s.journeyName}>{journey.name}</Text>
-        {dateRange && <Text style={s.dateRange}>{dateRange}</Text>}
-        {journey.duration_days != null && (
-          <Text style={s.duration}>{journey.duration_days} day{journey.duration_days !== 1 ? 's' : ''}</Text>
-        )}
-        {journey.start_date && totalDays && journey.status === 'active' && (
-          <Text style={s.dayCounter}>Day {daysElapsed} of {totalDays}</Text>
-        )}
+        <View style={s.headerCard}>
+          <Text style={s.journeyName}>{journey.name}</Text>
+          {dateRange && <Text style={s.dateRange}>{dateRange}</Text>}
+          {journey.duration_days != null && (
+            <Text style={s.duration}>{journey.duration_days} day{journey.duration_days !== 1 ? 's' : ''}</Text>
+          )}
+          {journey.start_date && totalDays && journey.status === 'active' && (
+            <Text style={s.dayCounter}>Day {daysElapsed} of {totalDays}</Text>
+          )}
+        </View>
 
         {/* Intentions section */}
         {journey.intentions && journey.intentions.length > 0 && (
-          <View style={s.intentionsSection}>
+          <View style={s.intentionsCard}>
             <Text style={s.intentionLabel}>INTENTIONS</Text>
             <View style={s.intentionChipsRow}>
               {journey.intentions.map((intention, idx) => (
@@ -181,9 +176,9 @@ export default function JourneyDetailScreen() {
                       backgroundColor: STATE_COLORS[swc.checkin?.nervous_system_state ?? ''] ?? '#EEEEEC',
                     }]} />
                     <View style={{ flex: 1 }}>
-                      <Text style={s.sessionDate}>{formatSessionDate(swc.session.created_at, swc.session.duration_minutes)}</Text>
+                      <Text style={s.sessionDateRow}>{formatSessionDate(swc.session.created_at, swc.session.duration_minutes)}</Text>
                       {swc.session.practice_type && (
-                        <Text style={s.sessionPractice}>{swc.session.practice_type}</Text>
+                        <Text style={s.sessionPracticeRow}>{swc.session.practice_type}</Text>
                       )}
                     </View>
                     <Text style={s.chevron}>›</Text>
@@ -200,12 +195,12 @@ export default function JourneyDetailScreen() {
         {/* Lifecycle actions */}
         <View style={s.actionsSection}>
           {journey.status === 'active' ? (
-            <TouchableOpacity style={s.secondaryBtn} onPress={() => setShowCloseModal(true)} activeOpacity={0.85}>
-              <Text style={s.secondaryBtnText}>End journey</Text>
+            <TouchableOpacity style={s.endBtn} onPress={() => setShowCloseModal(true)} activeOpacity={0.85}>
+              <Text style={s.endBtnText}>End journey</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={s.secondaryBtn} onPress={() => setShowReopenModal(true)} activeOpacity={0.85}>
-              <Text style={s.secondaryBtnText}>Reopen journey</Text>
+            <TouchableOpacity style={s.endBtn} onPress={() => setShowReopenModal(true)} activeOpacity={0.85}>
+              <Text style={s.endBtnText}>Reopen journey</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={s.deleteBtn} onPress={() => setShowDeleteModal(true)} activeOpacity={0.85}>
@@ -279,7 +274,7 @@ export default function JourneyDetailScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: COLORS.background },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 12,
@@ -287,17 +282,31 @@ const s = StyleSheet.create({
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   backBtnText: { fontSize: 28, color: '#B07FFF', lineHeight: 32 },
   editBtn: { paddingHorizontal: 8, paddingVertical: 4 },
-  editBtnText: { fontSize: 15, fontWeight: '500', color: '#B07FFF' },
+  editBtnText: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#B07FFF' },
   body: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 60 },
 
+  headerCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 12,
+    ...CARD_SHADOW,
+  },
   journeyName: { fontSize: 24, fontWeight: '700', color: '#1A1A1A', marginBottom: 6 },
   dateRange: { fontSize: 14, color: '#666666', marginBottom: 2 },
   duration: { fontSize: 13, color: '#999999', marginBottom: 4 },
-  dayCounter: { fontSize: 13, fontWeight: '500', color: '#B07FFF', marginBottom: 4 },
+  dayCounter: { fontSize: 13, fontWeight: '500', color: '#B07FFF', marginBottom: 0 },
 
+  intentionsCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    ...CARD_SHADOW,
+  },
   intentionsSection: { marginTop: 16, marginBottom: 4 },
   intentionLabel: {
-    fontSize: 11, fontWeight: '500', color: '#999999',
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
     textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8,
   },
   intentionChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
@@ -305,7 +314,7 @@ const s = StyleSheet.create({
     borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6,
     backgroundColor: '#F0F0F0',
   },
-  intentionChipText: { fontSize: 13, fontWeight: '500', color: '#666666' },
+  intentionChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: '#666666' },
 
   emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 15, color: '#999999' },
@@ -323,11 +332,11 @@ const s = StyleSheet.create({
     backgroundColor: '#B07FFF', borderRadius: 12, height: 50,
     alignItems: 'center', justifyContent: 'center', marginTop: 20, marginBottom: 28,
   },
-  newSessionBtnText: { fontSize: 15, fontWeight: '500', color: '#FFFFFF' },
+  newSessionBtnText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
 
   sectionLabel: {
-    fontSize: 13, fontWeight: '600', color: '#999999',
-    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10,
   },
 
   card: { backgroundColor: '#FFFFFF', borderRadius: 12, marginBottom: 24 },
@@ -335,22 +344,29 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12,
   },
   stateDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-  sessionDate: { fontSize: 14, fontWeight: '500', color: '#1A1A1A' },
+  sessionDate: { ...OPTION_TEXT, fontSize: 14, fontWeight: '500' },
   sessionPractice: { fontSize: 12, color: '#666666', marginTop: 2 },
+  sessionDateRow: { fontSize: 14, fontWeight: '400', color: '#999999', fontFamily: 'Nunito_400Regular' },
+  sessionPracticeRow: { fontSize: 12, color: '#666666', marginTop: 2, fontFamily: 'Nunito_400Regular', fontWeight: '400' },
   chevron: { fontSize: 18, color: '#999999' },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 16 },
 
-  actionsSection: { marginTop: 8, gap: 10 },
+  actionsSection: { marginTop: 16, flexDirection: 'row', gap: 12 },
+  endBtn: {
+    flex: 1, height: 44, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.accentTint,
+  },
+  endBtnText: { fontSize: 14, fontWeight: '500', color: COLORS.accent },
+  deleteBtn: {
+    flex: 1, height: 44, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.rootTint,
+  },
+  deleteBtnText: { fontSize: 14, fontWeight: '500', color: COLORS.root },
   secondaryBtn: {
     borderWidth: 1, borderColor: '#EEEEEC', borderRadius: 12,
     paddingVertical: 14, alignItems: 'center', backgroundColor: '#FAFAF8',
   },
   secondaryBtnText: { fontSize: 15, fontWeight: '500', color: '#666666' },
-  deleteBtn: {
-    borderWidth: 1, borderColor: '#FFE5E5', borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center', backgroundColor: '#FFF8F8',
-  },
-  deleteBtnText: { fontSize: 15, fontWeight: '500', color: '#FF2A2A' },
 
   backdrop: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.35)',

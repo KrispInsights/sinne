@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { OPTION_TEXT } from '@/lib/theme';
 
 type CategoryKey = 'Actions' | 'Body' | 'Emotions' | 'Gratitude' | 'Meaning' | 'Memories' | 'Patterns' | 'Realizations' | 'Triggers';
 
@@ -72,7 +73,7 @@ const s = StyleSheet.create({
   backText: { fontSize: 28, color: '#B07FFF', lineHeight: 32 },
   title: { fontSize: 17, fontWeight: '500', color: '#1A1A1A' },
   body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 },
-  prompt: { fontSize: 16, fontWeight: '500', color: '#1A1A1A', marginBottom: 20, lineHeight: 22 },
+  prompt: { ...OPTION_TEXT, fontSize: 16, fontWeight: '500', marginBottom: 20, lineHeight: 22 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 32 },
   card: {
     width: '31%', minHeight: 80,

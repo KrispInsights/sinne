@@ -3,12 +3,15 @@ import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   StyleSheet, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import {
   getSession, updateSession, deleteSession, getJourneys,
 } from '@/lib/storage';
 import type { SessionWithCheckin, Journey, BodySensation } from '@/lib/types';
+import { BodyFigureEllipses } from '@/components/BodyFigure';
+import { FONTS, COLORS, CARD_SHADOW, OPTION_TEXT } from '@/lib/theme';
 
 // ---- Constants ----
 
@@ -65,9 +68,14 @@ const CONNECTION_OPTIONS = [
   { key: 'unclear',           label: 'Unclear / don\'t know' },
 ];
 
-function getStateColor(state: string | null | undefined) {
-  const colors: Record<string, string> = { settled: '#7AAE8A', activated: '#C9B96A', shutdown: '#7E6B9E' };
-  return colors[state ?? ''] ?? '#EEEEEC';
+function getStateColor(state: string | null | undefined): { border: string; bg: string } {
+  const colors: Record<string, { border: string; bg: string }> = {
+    settled: { border: '#7AAE8A', bg: '#7AAE8A40' },
+    grounded: { border: '#7AAE8A', bg: '#7AAE8A40' },
+    activated: { border: '#C9B96A', bg: '#C9B96A40' },
+    shutdown: { border: '#7E6B9E', bg: '#7E6B9E40' },
+  };
+  return colors[state ?? ''] ?? { border: '#EEEEEC', bg: '#EEEEEC40' };
 }
 
 function getNsState(key: string | null | undefined) {
@@ -89,14 +97,6 @@ function capitalize(s: string): string {
 }
 
 type VocabKey = 'plain' | 'polyvagal' | 'ifs' | 'somatic';
-
-const CARD_SHADOW = {
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.06,
-  shadowRadius: 12,
-  elevation: 3,
-} as const;
 
 // ---- Main component ----
 
@@ -238,124 +238,137 @@ export default function SessionDetailScreen() {
 
   // ---- Read-only view ----
   if (!editMode) {
+    const stateColors = getStateColor(checkin?.nervous_system_state);
+    const dateStr = new Date(session.created_at).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
+
     return (
       <SafeAreaView style={s.safe} edges={['top']}>
-        <View style={s.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={s.iconBtn}>
-            <Text style={s.backText}>‹</Text>
-          </TouchableOpacity>
-          <Text style={s.topBarTitle} numberOfLines={1}>{formatDateTime(session.created_at)}</Text>
-          <TouchableOpacity onPress={() => setEditMode(true)} style={s.editBtn}>
-            <Text style={s.editBtnText}>Edit</Text>
-          </TouchableOpacity>
-        </View>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={s.bodyReadOnly} showsVerticalScrollIndicator={false}>
+          {/* HERO HEADER with gradient */}
+          <LinearGradient
+            colors={[stateColors.bg, 'rgba(255,255,255,0)']}
+            style={s.heroHeader}
+          >
+            <TouchableOpacity onPress={() => router.back()} style={s.heroBackBtn}>
+              <Text style={s.heroBackText}>‹</Text>
+            </TouchableOpacity>
 
-          {/* NS state pill (muted chakra colour) */}
-          {nsState && (
-            <View style={[s.statePill, { backgroundColor: getStateColor(checkin?.nervous_system_state) + '24' }]}>
-              <Text style={[s.statePillText, { color: getStateColor(checkin?.nervous_system_state) }]}>
-                {nsState.labels['plain' as VocabKey]}
+            <View style={s.heroContent}>
+              <Text style={s.heroDateDuration}>
+                {dateStr}{session.duration_minutes !== null ? ` · ${session.duration_minutes} min` : ''}
               </Text>
-            </View>
-          )}
 
-          {/* Meta card (practice, duration, journey) */}
-          {(session.practice_type || session.duration_minutes !== null || journeyName) && (
-            <View style={[s.sectionCard, CARD_SHADOW]}>
-              {(session.practice_type || session.duration_minutes !== null) && (
-                <View style={s.metaRow}>
-                  {session.practice_type && <Text style={s.metaChip}>{session.practice_type}</Text>}
-                  {session.duration_minutes !== null && <Text style={s.metaChip}>{session.duration_minutes} min</Text>}
-                </View>
+              {session.practice_type && (
+                <Text style={s.heroPractice}>{session.practice_type}</Text>
               )}
+
               {journeyName && (
-                <View style={[s.journeyPill, { marginTop: (session.practice_type || session.duration_minutes !== null) ? 10 : 0 }]}>
-                  <Text style={s.journeyPillText}>Journey: {journeyName}</Text>
+                <View style={s.heroJourneyPill}>
+                  <Text style={s.heroJourneyPillText}>{journeyName}</Text>
+                </View>
+              )}
+
+              {nsState && (
+                <View style={[s.heroNsPill, { backgroundColor: stateColors.bg, borderColor: stateColors.border }]}>
+                  <Text style={[s.heroNsPillText, { color: stateColors.border }]}>
+                    {nsState.labels['plain' as VocabKey]}
+                  </Text>
                 </View>
               )}
             </View>
-          )}
 
-          {/* Shift card */}
-          {checkin?.energetic_shift && (
-            <View style={[s.sectionCard, CARD_SHADOW]}>
-              <Text style={s.cardSectionLabel}>SHIFT OR RELEASE</Text>
-              <Text style={s.cardBodyText}>
-                {checkin.energetic_shift}
-                {checkin.release_qualities.length > 0 ? ', ' + checkin.release_qualities.map(capitalize).join(', ') : ''}
-              </Text>
-            </View>
-          )}
+            <TouchableOpacity onPress={() => setEditMode(true)} style={s.heroEditBtn}>
+              <Text style={s.heroEditText}>Edit</Text>
+            </TouchableOpacity>
+          </LinearGradient>
 
-          {/* Emotions card */}
-          {(checkin?.emotion_tags?.length ?? 0) > 0 && (
-            <View style={[s.sectionCard, CARD_SHADOW]}>
-              <Text style={s.cardSectionLabel}>EMOTIONS</Text>
-              <View style={s.chipRow}>
-                {checkin!.emotion_tags.map((tag) => {
-                  const col = getTagColors(tag);
-                  return (
-                    <View key={tag} style={[s.chip, { backgroundColor: col.bg }]}>
-                      <Text style={[s.chipText, { color: col.text }]}>{capitalize(tag)}</Text>
-                    </View>
-                  );
-                })}
+          <View style={s.narrativeBody}>
+
+            {/* WHAT MOVED section */}
+            {checkin?.energetic_shift && (
+              <View style={s.narrativeCard}>
+                <Text style={s.narrativeSectionLabel}>WHAT MOVED</Text>
+                <Text style={s.narrativeMovementValue}>{checkin.energetic_shift}</Text>
+                {checkin.release_qualities.length > 0 && (
+                  <Text style={s.narrativeSensationTag}>
+                    {checkin.release_qualities.map(capitalize).join(', ')}
+                  </Text>
+                )}
               </View>
-            </View>
-          )}
+            )}
 
-          {/* Body card */}
-          {(checkin?.body_sensations?.length ?? 0) > 0 && (
-            <View style={[s.sectionCard, CARD_SHADOW]}>
-              <Text style={s.cardSectionLabel}>BODY</Text>
-              <View style={s.bodyList}>
+            {/* BODY section */}
+            {(checkin?.body_sensations?.length ?? 0) > 0 && (
+              <View style={s.narrativeCard}>
+                <Text style={s.narrativeSectionLabel}>BODY</Text>
                 {checkin!.body_sensations.map((bs) => {
                   const region = BODY_REGIONS.find((r) => r.key === bs.region);
-                  const dotColor = REGION_COLORS[bs.region] ?? '#999999';
                   return (
-                    <View key={bs.region} style={s.bodyRow}>
-                      <View style={[s.bodyDot, { backgroundColor: dotColor }]} />
-                      <Text style={s.bodyRegionName}>{region?.label ?? bs.region}</Text>
-                      {bs.quality && <Text style={s.bodyQuality}>, {capitalize(bs.quality)}</Text>}
+                    <View key={bs.region} style={s.bodyInlineRow}>
+                      <BodyFigureEllipses width={72} bodySensations={[bs]} />
+                      <View style={{ marginLeft: 12 }}>
+                        <Text style={s.bodyInlineName}>{region?.label ?? bs.region}</Text>
+                        {bs.quality && <Text style={s.bodyInlineQuality}>{capitalize(bs.quality)}</Text>}
+                      </View>
                     </View>
                   );
                 })}
               </View>
-            </View>
-          )}
+            )}
 
-          {/* Connection card */}
-          {checkin?.connection_type && (
-            <View style={[s.sectionCard, CARD_SHADOW]}>
-              <Text style={s.cardSectionLabel}>CONNECTION</Text>
-              <Text style={s.cardBodyText}>
-                {CONNECTION_OPTIONS.find((o) => o.key === checkin.connection_type)?.label ?? checkin.connection_type}
-              </Text>
-              {checkin.connection_note ? <Text style={s.connectionNote}>{checkin.connection_note}</Text> : null}
-            </View>
-          )}
+            {/* CONNECTION section */}
+            {checkin?.connection_type && (
+              <View style={s.narrativeCard}>
+                <Text style={s.narrativeSectionLabel}>CONNECTION</Text>
+                <View style={[s.connectionQuote, { borderLeftColor: stateColors.border }]}>
+                  <Text style={s.connectionQuoteText}>
+                    {CONNECTION_OPTIONS.find((o) => o.key === checkin.connection_type)?.label ?? checkin.connection_type}
+                  </Text>
+                  {checkin.connection_note && (
+                    <Text style={s.connectionQuoteText}> — {checkin.connection_note}</Text>
+                  )}
+                </View>
+              </View>
+            )}
 
-          {/* Note card */}
-          {checkin?.elaboration_note ? (
-            <View style={[s.sectionCard, CARD_SHADOW]}>
-              <Text style={s.cardSectionLabel}>NOTE</Text>
-              <Text style={s.cardBodyText}>{checkin.elaboration_note}</Text>
-            </View>
-          ) : null}
+            {/* EMOTIONS section */}
+            {(checkin?.emotion_tags?.length ?? 0) > 0 && (
+              <View style={s.narrativeCard}>
+                <Text style={s.narrativeSectionLabel}>EMOTIONS</Text>
+                <View style={s.chipRow}>
+                  {checkin!.emotion_tags.map((tag) => {
+                    const col = getTagColors(tag);
+                    return (
+                      <View key={tag} style={[s.chip, { backgroundColor: col.bg }]}>
+                        <Text style={[s.chipText, { color: col.text }]}>{capitalize(tag)}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
 
-          {/* What felt different card */}
-          {checkin?.difference_note ? (
-            <View style={[s.sectionCard, CARD_SHADOW]}>
-              <Text style={s.cardSectionLabel}>WHAT FELT DIFFERENT</Text>
-              <Text style={s.cardBodyText}>{checkin.difference_note}</Text>
-            </View>
-          ) : null}
+            {/* NOTE section */}
+            {checkin?.elaboration_note && (
+              <View style={s.narrativeCard}>
+                <Text style={s.narrativeSectionLabel}>NOTE</Text>
+                <Text style={s.narrativeNoteText}>{checkin.elaboration_note}</Text>
+              </View>
+            )}
 
-          <TouchableOpacity style={s.deleteBtn} onPress={() => setShowDelete(true)} activeOpacity={0.7}>
-            <Text style={s.deleteBtnText}>Delete session</Text>
-          </TouchableOpacity>
+            {/* WHAT FELT DIFFERENT section */}
+            {checkin?.difference_note && (
+              <View style={s.narrativeCard}>
+                <Text style={s.narrativeSectionLabel}>WHAT FELT DIFFERENT</Text>
+                <Text style={s.narrativeNoteText}>{checkin.difference_note}</Text>
+              </View>
+            )}
+
+            <TouchableOpacity style={s.deleteBtn} onPress={() => setShowDelete(true)} activeOpacity={0.7}>
+              <Text style={s.deleteBtnText}>Delete session</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
 
         {/* Delete confirmation modal */}
@@ -628,52 +641,174 @@ export default function SessionDetailScreen() {
 // ---- Styles ----
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: COLORS.background },
+
+  // Hero header gradient zone
+  heroHeader: {
+    height: 160,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    position: 'relative',
+  },
+  heroBackBtn: {
+    position: 'absolute',
+    top: 12,
+    left: 20,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+  },
+  heroBackText: { fontSize: 28, color: '#B07FFF', lineHeight: 32 },
+  heroEditBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 20,
+    height: 36,
+    justifyContent: 'center',
+  },
+  heroEditText: { fontSize: 15, color: '#B07FFF', fontWeight: '500' },
+  heroContent: {
+    paddingTop: 52,
+    gap: 6,
+  },
+  heroDateDuration: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.body,
+  },
+  heroPractice: {
+    fontSize: 20,
+    fontFamily: FONTS.display,
+    color: COLORS.text,
+  },
+  heroJourneyPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F5F2F9',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginTop: 4,
+  },
+  heroJourneyPillText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#9B7FBF',
+    fontFamily: FONTS.bodyMedium,
+  },
+  heroNsPill: {
+    alignSelf: 'flex-start',
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 6,
+  },
+  heroNsPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: FONTS.bodySemiBold,
+  },
+
+  // Narrative body
+  narrativeBody: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  narrativeCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    ...CARD_SHADOW,
+  },
+  narrativeSection: {
+    marginBottom: 16,
+  },
+  narrativeSectionLabel: {
+    fontSize: 10,
+    color: COLORS.textTertiary,
+    letterSpacing: 1.2,
+    marginBottom: 8,
+    fontFamily: FONTS.bodyMedium,
+    fontWeight: '500',
+  },
+  narrativeMovementValue: {
+    fontSize: 26,
+    fontFamily: FONTS.display,
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  narrativeSensationTag: {
+    fontSize: 13,
+    fontFamily: FONTS.body,
+    color: COLORS.textSecondary,
+    fontStyle: 'italic',
+    marginBottom: 12,
+  },
+  narrativeDivider: {
+    height: 0.5,
+    backgroundColor: COLORS.border,
+    marginTop: 4,
+  },
+
+  // Body inline
+  bodyInlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  bodyInlineName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.text,
+    fontFamily: FONTS.bodyMedium,
+  },
+  bodyInlineQuality: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.body,
+  },
+
+  // Connection quote
+  connectionQuote: {
+    borderLeftWidth: 2,
+    paddingLeft: 10,
+  },
+  connectionQuoteText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.body,
+    lineHeight: 18,
+  },
+
+  // Notes text
+  narrativeNoteText: {
+    fontSize: 15,
+    color: COLORS.text,
+    lineHeight: 22,
+    fontFamily: FONTS.body,
+  },
+
+  // Edit mode top bar
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 10, gap: 8,
   },
   iconBtn: { minWidth: 60, height: 36, justifyContent: 'center' },
-  backText: { fontSize: 28, color: '#B07FFF', lineHeight: 32 },
   cancelText: { fontSize: 15, color: '#666666' },
   saveLinkText: { fontSize: 15, color: '#B07FFF', fontWeight: '500', textAlign: 'right' },
-  editBtn: { minWidth: 60, height: 36, justifyContent: 'center', alignItems: 'flex-end' },
-  editBtnText: { fontSize: 15, color: '#B07FFF', fontWeight: '500' },
   topBarTitle: { flex: 1, fontSize: 13, color: '#666666', textAlign: 'center' },
   body: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40 },
-  bodyReadOnly: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40, gap: 12 },
 
   emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyTxt: { fontSize: 15, color: '#999999' },
 
-  // Read-only section cards
-  sectionCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16 },
-  statePill: {
-    alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
-  },
-  statePillText: { fontSize: 14, fontWeight: '600' },
-  journeyPill: {
-    alignSelf: 'flex-start', backgroundColor: '#F5F2F9',
-    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5,
-  },
-  journeyPillText: { fontSize: 12, fontWeight: '500', color: '#9B7FBF' },
-  cardSectionLabel: {
-    fontSize: 11, fontWeight: '500', color: '#999999',
-    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10,
-  },
-  cardBodyText: { fontSize: 15, color: '#1A1A1A', lineHeight: 22 },
-  connectionNote: { fontSize: 13, color: '#666666', marginTop: 6, fontStyle: 'italic' },
-
-  metaRow: { flexDirection: 'row', gap: 8 },
-  metaChip: {
-    fontSize: 12, color: '#666666', backgroundColor: '#FAFAF8',
-    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
-  },
-
   // Edit mode section label
   sectionLabel: {
-    fontSize: 11, fontWeight: '500', color: '#999999',
-    textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8,
   },
 
   // Legacy (kept for edit mode, nsCard used in edit view)
@@ -681,7 +816,7 @@ const s = StyleSheet.create({
     borderWidth: 1.5, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 16,
     marginBottom: 12, alignItems: 'center',
   },
-  nsCardText: { fontSize: 16, fontWeight: '500' },
+  nsCardText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400' },
 
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
   chip: {
@@ -691,7 +826,7 @@ const s = StyleSheet.create({
     backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
   },
   chipSelected: { backgroundColor: '#B07FFF', borderColor: '#B07FFF' },
-  chipText: { fontSize: 13, fontWeight: '500', color: '#1A1A1A' },
+  chipText: { ...OPTION_TEXT },
   chipTextSel: { color: '#FFFFFF' },
 
   bodyList: { gap: 8 },
@@ -714,16 +849,16 @@ const s = StyleSheet.create({
     borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16,
   },
   optionCardSelected: { borderColor: '#B07FFF' },
-  optionCardText: { fontSize: 15, fontWeight: '500', color: '#1A1A1A' },
+  optionCardText: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400' },
   optionCardTextSel: { color: '#B07FFF' },
   qualityLabel: {
-    fontSize: 10, fontWeight: '500', color: '#999999',
-    textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 6,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6,
   },
   textarea: {
+    fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#1A1A1A',
     backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
-    borderRadius: 10, padding: 14, fontSize: 15, color: '#1A1A1A',
-    lineHeight: 22, minHeight: 80,
+    borderRadius: 10, padding: 14, lineHeight: 22, minHeight: 80,
   },
   input: {
     backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
@@ -752,7 +887,7 @@ const s = StyleSheet.create({
     backgroundColor: '#FF2A2A', borderRadius: 12, height: 50,
     alignItems: 'center', justifyContent: 'center', marginBottom: 10,
   },
-  modalDestructiveText: { fontSize: 15, fontWeight: '500', color: '#FFFFFF' },
+  modalDestructiveText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
   modalCancelBtn: {
     height: 44, alignItems: 'center', justifyContent: 'center',
   },
@@ -764,8 +899,8 @@ const s = StyleSheet.create({
     paddingTop: 16, paddingHorizontal: 0,
   },
   pickerTitle: {
-    fontSize: 13, fontWeight: '500', color: '#999999',
-    textTransform: 'uppercase', letterSpacing: 0.7,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    textTransform: 'uppercase', letterSpacing: 1.2,
     paddingHorizontal: 20, marginBottom: 8,
   },
   pickerRow: {
@@ -774,6 +909,6 @@ const s = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#EEEEEC',
   },
   pickerRowSelected: { backgroundColor: '#F6F0FF' },
-  pickerRowText: { fontSize: 15, color: '#1A1A1A' },
+  pickerRowText: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#666666' },
   checkmark: { fontSize: 16, color: '#B07FFF', fontWeight: '600' },
 });

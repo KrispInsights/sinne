@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { getMirrors } from '@/lib/storage';
 import type { Mirror } from '@/lib/types';
+import { COLORS } from '@/lib/theme';
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
@@ -104,7 +105,7 @@ export default function MirrorDetailScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8,

@@ -9,6 +9,7 @@ import {
   getProfile, updateProfile, signOut, resetToMockData,
 } from '@/lib/storage';
 import type { Profile } from '@/lib/types';
+import { COLORS } from '@/lib/theme';
 
 const CARD_SHADOW = {
   shadowColor: '#7E6B9E',
@@ -305,7 +306,7 @@ export default function SettingsScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FAFAFA' },
+  safe: { flex: 1, backgroundColor: COLORS.background },
   content: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 60 },
 
   headerRow: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },

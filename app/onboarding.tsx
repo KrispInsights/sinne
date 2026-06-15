@@ -554,7 +554,7 @@ const s = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '500', color: '#3a2e25', marginBottom: 4 },
   subtitle: { fontSize: 14, color: '#a09580', marginBottom: 4 },
   body: { paddingHorizontal: 20, paddingTop: 8 },
-  label: { fontSize: 11, fontWeight: '500', color: '#c4b8a8', letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 10 },
+  label: { fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#c4b8a8', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 },
   input: {
     backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EAE4DC',
     borderRadius: 10, paddingHorizontal: 14, paddingVertical: 14,
@@ -568,7 +568,7 @@ const s = StyleSheet.create({
     backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EAE4DC',
   },
   chipSelected: { backgroundColor: '#B07FFF', borderColor: '#B07FFF' },
-  chipText: { fontSize: 13, fontWeight: '500', color: '#3a2e25' },
+  chipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: '#3a2e25' },
   chipTextSelected: { color: '#FFFFFF' },
   card: {
     backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#EEEEEC',
@@ -576,7 +576,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
   },
   cardSelected: { borderColor: '#B07FFF', backgroundColor: '#F6F0FF' },
-  cardTitle: { fontSize: 15, fontWeight: '500', color: '#1A1A1A', marginBottom: 2 },
+  cardTitle: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#1A1A1A', marginBottom: 2 },
   cardTitleSelected: { color: '#B07FFF' },
   cardSub: { fontSize: 13, color: '#999999' },
   cardRadio: {
@@ -585,7 +585,7 @@ const s = StyleSheet.create({
   },
   cardRadioSelected: { borderColor: '#B07FFF' },
   subtypeBlock: { marginTop: 12 },
-  subtypeLabel: { fontSize: 10, fontWeight: '500', color: '#c4b8a8', letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 8 },
+  subtypeLabel: { fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#c4b8a8', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 },
   previewRow: { flexDirection: 'row', gap: 6 },
   previewCard: {
     flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 10,

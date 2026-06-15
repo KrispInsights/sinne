@@ -15,6 +15,7 @@ import {
 } from '@/lib/storage';
 import { markSessionSaved } from '@/lib/events';
 import type { BodySensation, Journey } from '@/lib/types';
+import { RADII, COLORS, OPTION_TEXT } from '@/lib/theme';
 
 function journeyIncludesToday(journey: Journey): boolean {
   if (!journey.start_date || !journey.duration_days) return false;
@@ -76,6 +77,15 @@ const WELLNESS_TONES: Record<string, string> = {
   shutdown: '#7B6BAE',
 };
 
+function getStateColor(state: string): { bg: string; border: string } {
+  const colors: Record<string, { bg: string; border: string }> = {
+    grounded: { bg: hexToRgba('#6B9E7A', 0.1), border: hexToRgba('#6B9E7A', 0.4) },
+    activated: { bg: hexToRgba('#C4993A', 0.1), border: hexToRgba('#C4993A', 0.4) },
+    shutdown: { bg: hexToRgba('#7B6BAE', 0.1), border: hexToRgba('#7B6BAE', 0.4) },
+  };
+  return colors[state] ?? { bg: '#FFFFFF', border: '#EEEEEC' };
+}
+
 const NS_STATES = [
   { key: 'grounded',  labels: { plain: 'Grounded',  polyvagal: 'Ventral',     ifs: 'Self',           somatic: 'Grounded'  }, color: '#7AAE8A', icon: 'weather-sunny-outline' },
   { key: 'activated', labels: { plain: 'Activated', polyvagal: 'Sympathetic', ifs: 'Activated part', somatic: 'Activated' }, color: '#C9B96A', icon: 'lightning-bolt-outline' },
@@ -106,7 +116,7 @@ const EMOTION_CLUSTERS = [
   { name: 'Neutral / liminal',   text: '#9B7FBF', tags: ['confusion','dissociation','emptiness','numbness'] },
   { name: 'Positive / opening',  text: '#7AAE8A', tags: ['awe','bliss','gratitude','joy','love','warmth'] },
   { name: 'Release / movement',  text: '#C49A6C', tags: ['openness','release','relief','surrender'] },
-  { name: 'Shame / contraction', text: '#7E6B9E', tags: ['guilt','shame','smallness','unworthiness'] },
+  { name: 'Shame / contraction', text: '#B5736A', tags: ['guilt','shame','smallness','unworthiness'] },
 ];
 
 const CHAKRA_ORDER: Record<string, number> = {
@@ -168,7 +178,6 @@ const ALL_PRACTICES = [
   'Sound healing',
   'Trauma therapy (body-based)',
   'Yoga',
-  'Not sure yet',
   'Other',
 ];
 
@@ -184,7 +193,6 @@ const PRACTICE_ICONS: Record<string, string> = {
   'Sound healing': 'music-note-outline',
   'Trauma therapy (body-based)': 'heart-pulse',
   'Yoga': 'yoga',
-  'Not sure yet': 'help-circle-outline',
   'Other': 'dots-horizontal-circle-outline',
 };
 
@@ -462,10 +470,6 @@ export default function NewSessionScreen() {
                 <MaterialCommunityIcons name="calendar-blank-outline" size={14} color="#666666" />
                 <Text style={ss.metadataPillText}>{formatChipDate(sessionDate)}</Text>
               </TouchableOpacity>
-              <View style={ss.metadataPill}>
-                <MaterialCommunityIcons name="clock-outline" size={14} color="#666666" />
-                <Text style={ss.metadataPillText}>{durationMinutes} min</Text>
-              </View>
             </View>
 
             {showDatePicker && (
@@ -654,10 +658,19 @@ export default function NewSessionScreen() {
               {NS_STATES.map((st) => {
                 const sel = nervousState === st.key;
                 const wellnessTone = WELLNESS_TONES[st.key] ?? st.color;
+                const stateColors = getStateColor(st.key);
                 return (
                   <TouchableOpacity
                     key={st.key}
-                    style={sel ? [ss.nsStackedCard, ss.nsStackedCardSelected, { borderColor: wellnessTone, backgroundColor: st.key === 'grounded' ? '#EDF5F0' : st.key === 'activated' ? '#FBF5E8' : '#EEEAF5' }] : ss.nsStackedCard}
+                    style={[
+                      ss.nsStackedCard,
+                      {
+                        backgroundColor: sel ? hexToRgba(WELLNESS_TONES[st.key], 0.2) : stateColors.bg,
+                        borderColor: stateColors.border,
+                        borderWidth: sel ? 2 : 1.5,
+                        borderRadius: RADII.chip,
+                      }
+                    ]}
                     onPress={() => handleNsSelect(st.key)}
                     activeOpacity={1}
                   >
@@ -701,7 +714,15 @@ export default function NewSessionScreen() {
                 return (
                   <TouchableOpacity
                     key={opt.label}
-                    style={sel ? [ss.nsStackedCard, ss.nsStackedCardSelected, { borderColor: opt.color, backgroundColor: opt.label === 'Something released' ? '#EBF3F8' : opt.label === 'Something shifted' ? '#F0EBF8' : '#F5F5F5' }] : ss.nsStackedCard}
+                    style={[
+                      ss.nsStackedCard,
+                      {
+                        backgroundColor: sel ? hexToRgba(opt.color, 0.2) : hexToRgba(opt.color, 0.1),
+                        borderColor: hexToRgba(opt.color, 0.6),
+                        borderWidth: sel ? 2 : 1.5,
+                        borderRadius: RADII.chip,
+                      }
+                    ]}
                     onPress={() => setEnergeticShift(sel ? '' : opt.label)}
                     activeOpacity={1}
                   >
@@ -765,7 +786,7 @@ export default function NewSessionScreen() {
             <Text style={ss.prompt}>What was emotionally present?</Text>
 
             {EMOTION_CLUSTERS.map((cluster) => (
-              <View key={cluster.name} style={[ss.clusterBlock, { backgroundColor: hexToRgba(cluster.text, 0.04) }]}>
+              <View key={cluster.name} style={[ss.clusterBlock, { backgroundColor: hexToRgba(cluster.text, 0.08) }]}>
                 <Text style={[ss.clusterName, { color: cluster.text }]}>{cluster.name.toUpperCase()}</Text>
                 <View style={ss.chipRow}>
                   {cluster.tags.map((tag) => {
@@ -894,7 +915,7 @@ export default function NewSessionScreen() {
                 return (
                   <View key={opt.key}>
                     <TouchableOpacity
-                      style={[ss.connectionRow, sel && { borderColor: opt.color, borderWidth: 2, backgroundColor: hexToRgba(opt.color, 0.12) }]}
+                      style={sel ? [ss.connectionRow, ss.nsStackedCardSelected, { borderColor: opt.color, backgroundColor: opt.key === 'tied_to_something' ? '#EBF3F8' : opt.key === 'pure_sensation' ? '#EDF5F0' : '#F5F5F5' }] : ss.connectionRow}
                       onPress={() => setConnectionType(sel ? '' : opt.key)}
                       activeOpacity={1}
                     >
@@ -1118,7 +1139,7 @@ export default function NewSessionScreen() {
 
 // ---- Styles ----
 const ss = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: COLORS.background },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 12,
@@ -1130,13 +1151,13 @@ const ss = StyleSheet.create({
   stepLabel: { fontSize: 12, color: '#999999', fontWeight: '500' },
 
   prompt: {
-    fontSize: 18, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A',
-    marginBottom: 20, lineHeight: 26,
+    fontSize: 22, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A',
+    marginBottom: 20, lineHeight: 30,
   },
 
   detailsLabel: {
-    fontSize: 11, fontWeight: '600', color: '#999999',
-    letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 12,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12,
   },
 
   body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20 },
@@ -1148,7 +1169,7 @@ const ss = StyleSheet.create({
     backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
     borderRadius: 20, paddingHorizontal: 12, height: 36,
   },
-  metadataPillText: { fontSize: 13, fontWeight: '500', color: '#666666' },
+  metadataPillText: { fontSize: 13, fontWeight: '400', color: '#666666', fontFamily: 'Nunito_400Regular' },
 
   // Duration chips
   durationGrid: { gap: 10, marginBottom: 20 },
@@ -1172,15 +1193,15 @@ const ss = StyleSheet.create({
     borderColor: '#B07FFF',
     borderWidth: 1.5,
   },
-  durationChipText: { fontSize: 15, fontWeight: '600', color: '#1A1A1A', fontFamily: 'Nunito_600SemiBold' },
+  durationChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: '#666666' },
   durationChipTextSelected: { color: '#B07FFF' },
 
   // Custom duration input
   customDurationRow: { marginBottom: 20 },
   customDurationInput: {
+    fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#1A1A1A',
     height: 44, paddingHorizontal: 16, borderRadius: 12,
     backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
-    fontSize: 15, fontWeight: '400', color: '#1A1A1A',
   },
 
   // Date picker dismiss button
@@ -1193,9 +1214,9 @@ const ss = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 14,
     minHeight: 48, paddingVertical: 8,
   },
-  practiceRowLabel: { flex: 1, fontSize: 15, fontWeight: '400', color: '#1A1A1A' },
-  practiceRowLabelSelected: { fontWeight: '600', color: PRACTICE_COLOR },
-  practiceDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC' },
+  practiceRowLabel: { ...OPTION_TEXT, flex: 1, fontSize: 17 },
+  practiceRowLabelSelected: { fontWeight: '600', color: PRACTICE_COLOR, fontSize: 17 },
+  practiceDivider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
   practiceCheck: {
     width: 22, height: 22, borderRadius: 11, backgroundColor: PRACTICE_COLOR,
     alignItems: 'center', justifyContent: 'center',
@@ -1220,7 +1241,7 @@ const ss = StyleSheet.create({
     borderColor: PRACTICE_COLOR,
     borderWidth: 1.5,
   },
-  subtypeChipText: { fontSize: 12, fontWeight: '500', color: '#1A1A1A' },
+  subtypeChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400' },
   subtypeChipTextSelected: { color: PRACTICE_COLOR },
 
   // Date chip / journey link
@@ -1242,13 +1263,8 @@ const ss = StyleSheet.create({
 
   // Step 2 stacked cards
   nsStackedCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1.5, borderColor: '#EEEEEC',
     paddingHorizontal: 20, paddingVertical: 18,
-    shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
-  },
-  nsStackedCardSelected: {
-    borderWidth: 2,
-    shadowOpacity: 0.10,
+    shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0, shadowRadius: 10, elevation: 0,
   },
   nsStackedCardContent: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
@@ -1257,7 +1273,7 @@ const ss = StyleSheet.create({
     width: 12, height: 12, borderRadius: 6,
   },
   nsStackedStateName: {
-    fontSize: 16, fontWeight: '600',
+    ...OPTION_TEXT, fontSize: 16,
   },
 
   // Step 2/3 cards (legacy - keeping for Step 3)
@@ -1295,13 +1311,13 @@ const ss = StyleSheet.create({
     shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
   },
   connectionRowText: {
-    flex: 1, fontSize: 16, fontFamily: 'DMSans_500Medium', fontWeight: '500', color: '#1A1A1A',
+    ...OPTION_TEXT, flex: 1,
   },
 
   qualitySection: { marginTop: 16 },
   qualityLabel: {
-    fontSize: 10, fontWeight: '500', color: '#999999',
-    letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 8,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8,
   },
 
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
@@ -1310,21 +1326,21 @@ const ss = StyleSheet.create({
     backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
   },
   chipSelected: { backgroundColor: '#B07FFF', borderColor: '#B07FFF' },
-  chipText: { fontSize: 13, fontWeight: '500', color: '#1A1A1A' },
+  chipText: { ...OPTION_TEXT, fontWeight: '500' },
   chipTextSelected: { color: '#FFFFFF' },
 
   clusterBlock: { marginBottom: 14, borderRadius: 12, padding: 12 },
   clusterName: {
-    fontSize: 11, fontWeight: '700',
-    letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 8,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500',
+    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8, color: '#999999',
   },
   emotionChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, minHeight: 44, justifyContent: 'center' },
-  emotionChipText: { fontSize: 13, fontWeight: '500' },
+  emotionChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: '#666666' },
 
   textArea: {
+    fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: COLORS.text,
     backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
-    borderRadius: 10, padding: 14, fontSize: 15, color: '#1A1A1A',
-    lineHeight: 22, minHeight: 100,
+    borderRadius: 10, padding: 14, lineHeight: 22, minHeight: 100,
   },
 
   noteCard: {
@@ -1332,8 +1348,8 @@ const ss = StyleSheet.create({
     borderRadius: 12, padding: 14, marginBottom: 12,
   },
   noteCardLabel: {
-    fontSize: 10, fontWeight: '500', color: '#999999',
-    letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 8,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8,
   },
 
   // Review screen — stacked summary cards
@@ -1343,15 +1359,15 @@ const ss = StyleSheet.create({
     shadowColor: '#1A1A1A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
   },
   summaryCardLabel: {
-    fontSize: 11, fontWeight: '600', color: '#999999',
-    letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 6,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6,
   },
-  summaryCardValue: { fontSize: 15, color: '#1A1A1A', lineHeight: 21 },
-  summaryCardSub: { fontSize: 13, color: '#666666', marginTop: 4, lineHeight: 19 },
+  summaryCardValue: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#1A1A1A', lineHeight: 22 },
+  summaryCardSub: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#666666', marginTop: 4, lineHeight: 22 },
   statePill: {
     alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, marginTop: 10,
   },
-  statePillText: { fontSize: 13, fontWeight: '600' },
+  statePillText: { fontSize: 13, fontWeight: '500', fontFamily: 'Nunito_500Medium' },
   summaryTag: {
     backgroundColor: '#F5F2F9', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5,
   },

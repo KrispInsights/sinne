@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { createJourney } from '@/lib/storage';
+import { COLORS, OPTION_TEXT } from '@/lib/theme';
 
 // ---- Date helpers ----
 
@@ -308,7 +309,7 @@ export default function NewJourneyScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: COLORS.background },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 12,
@@ -326,14 +327,14 @@ const s = StyleSheet.create({
   infoText: { fontSize: 14, color: '#666666', lineHeight: 20 },
 
   label: {
-    fontSize: 13, fontWeight: '600', color: '#999999',
-    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10,
   },
 
   input: {
+    fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#1A1A1A',
     backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
-    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 14,
-    fontSize: 15, color: '#1A1A1A', marginBottom: 28,
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 14, marginBottom: 28,
   },
 
   pickersRow: {
@@ -356,7 +357,7 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   createBtnDisabled: { opacity: 0.4 },
-  createBtnText: { fontSize: 15, fontWeight: '500', color: '#FFFFFF' },
+  createBtnText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
 
   modalBackdrop: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.35)',
@@ -393,7 +394,7 @@ const s = StyleSheet.create({
     backgroundColor: '#F2EEF9', borderColor: '#B07FFF', borderWidth: 2,
   },
   intentionCardText: {
-    fontSize: 15, fontWeight: '500', color: '#1A1A1A', flex: 1,
+    ...OPTION_TEXT, fontSize: 15, fontWeight: '500', flex: 1,
   },
   intentionCardTextSelected: {
     fontWeight: '600', color: '#B07FFF',

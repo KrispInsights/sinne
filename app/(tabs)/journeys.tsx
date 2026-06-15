@@ -7,10 +7,25 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getJourneys, getSessions, getIntegrations } from '@/lib/storage';
 import type { Journey, Integration } from '@/lib/types';
-import { COLORS, RADII, CARD_SHADOW, FONTS, getPracticeColor } from '@/lib/theme';
+import { COLORS, RADII, CARD_SHADOW, FONTS } from '@/lib/theme';
 
 // Muted accent colours cycled across journey cards (throat, heart, sacral, third eye, root, solar)
 const JOURNEY_ACCENT_COLORS = [COLORS.throat, COLORS.heart, COLORS.sacral, COLORS.thirdEye, COLORS.root, COLORS.solar];
+
+const PRACTICE_COLORS: Record<string, string> = {
+  'Breathwork': '#6E9BB5',
+  'Dance / movement therapy': '#C9B96A',
+  'IFS / Internal Family Systems': '#9B7FBF',
+  'Meditation / Vipassana': '#7B6BAE',
+  'Qi Gong / Tai Chi': '#7AAE8A',
+  'Reiki / energy healing': '#A89ABF',
+  'Somatic Experiencing': '#7AAE8A',
+  'Sound healing': '#6E9BB5',
+  'Trauma therapy (body-based)': '#B5736A',
+  'Yoga': '#C49A6C',
+  'Not sure yet': '#BBBBBB',
+  'Other': '#BBBBBB',
+};
 
 // Practice type icon mapping
 const PRACTICE_ICONS: Record<string, string> = {
@@ -37,6 +52,17 @@ function getPracticeIcon(practiceType: string): string {
     if (base.startsWith(key) || key.startsWith(base)) return icon;
   }
   return 'circle-outline';
+}
+
+function getPracticeColorLocal(practiceType: string): string {
+  // Try exact match first
+  if (PRACTICE_COLORS[practiceType]) return PRACTICE_COLORS[practiceType];
+  // Try partial match
+  const base = practiceType.split(':')[0].trim();
+  for (const [key, color] of Object.entries(PRACTICE_COLORS)) {
+    if (base.startsWith(key) || key.startsWith(base)) return color;
+  }
+  return '#BBBBBB';
 }
 
 function BottomSheet({ visible, onDismiss, children }: { visible: boolean; onDismiss: () => void; children: React.ReactNode }) {
@@ -157,12 +183,12 @@ export default function JourneysScreen() {
                 if (entry.type === 'integration') {
                   // Show integration icon (same as Integration tab)
                   return (
-                    <MaterialCommunityIcons key={`integration-${idx}`} name="notebook-outline" size={20} color={accent} style={{ opacity: 0.7 }} />
+                    <MaterialCommunityIcons key={`integration-${idx}`} name="notebook-outline" size={20} color="#C9B96A" style={{ opacity: 0.7 }} />
                   );
                 } else {
                   // Show session/practice icon
                   const icon = entry.practiceType ? getPracticeIcon(entry.practiceType) : 'circle-outline';
-                  const color = entry.practiceType ? getPracticeColor(entry.practiceType) : accent;
+                  const color = entry.practiceType ? getPracticeColorLocal(entry.practiceType) : accent;
                   return (
                     <MaterialCommunityIcons key={`session-${idx}`} name={icon as any} size={20} color={color} style={{ opacity: 0.7 }} />
                   );
@@ -307,7 +333,7 @@ const s = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 120, gap: 20 },
 
   sectionLabel: {
-    fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
     textTransform: 'uppercase', letterSpacing: 1.2,
   },
 
@@ -320,11 +346,11 @@ const s = StyleSheet.create({
 
   journeyName: { fontSize: 18, fontFamily: FONTS.display, color: COLORS.text },
 
-  iconsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  iconOverflow: { fontSize: 12, fontWeight: '400', color: COLORS.textTertiary, fontFamily: 'DMSans_400Regular' },
+  iconsRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 4 },
+  iconOverflow: { fontSize: 12, fontWeight: '400', color: COLORS.textTertiary, fontFamily: 'Nunito_400Regular' },
 
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  progressLabel: { fontSize: 13, fontWeight: '400', color: COLORS.textTertiary },
+  progressLabel: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: COLORS.textTertiary },
   progressPct: { fontSize: 13, fontWeight: '600' },
   progressTrack: { height: 6, borderRadius: 8, backgroundColor: COLORS.track, overflow: 'hidden' },
   progressFill: { height: 6, borderRadius: 8 },
@@ -332,7 +358,7 @@ const s = StyleSheet.create({
   logBtn: {
     height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 2,
   },
-  logBtnText: { fontSize: 15, fontWeight: '600' },
+  logBtnText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600' },
 
   endedBadge: {
     position: 'absolute', top: 16, right: 16,
@@ -340,8 +366,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 4,
   },
   endedBadgeText: {
-    fontSize: 10, fontWeight: '600', color: COLORS.textTertiary,
-    textTransform: 'uppercase', letterSpacing: 0.8,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
+    textTransform: 'uppercase', letterSpacing: 1.2,
   },
 
   endedToggle: {
@@ -373,7 +399,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 24, paddingVertical: 14, gap: 16, minHeight: 64,
   },
-  actionLabel: { fontSize: 16, fontWeight: '500', color: '#1A1A1A' },
-  actionSubtitle: { fontSize: 12, color: '#999999', marginTop: 2 },
+  actionLabel: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#1A1A1A' },
+  actionSubtitle: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: '#999999', marginTop: 2 },
   actionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 24 },
 });

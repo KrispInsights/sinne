@@ -9,6 +9,80 @@ export const FONTS = {
   bodyBold: 'Nunito_700Bold',
 };
 
+export const TYPOGRAPHY = {
+  // Display — DMSerifDisplay for headings ≥20px
+  display: {
+    fontFamily: 'DMSerifDisplay_400Regular',
+    fontWeight: '400' as const,
+  },
+  // Body hierarchy — all Nunito via the global patcher
+  bodyLarge: {
+    fontFamily: 'Nunito_400Regular',
+    fontSize: 17,
+    fontWeight: '400' as const,
+  },
+  body: {
+    fontFamily: 'Nunito_400Regular',
+    fontSize: 15,
+    fontWeight: '400' as const,
+  },
+  bodyMedium: {
+    fontFamily: 'Nunito_500Medium',
+    fontSize: 15,
+    fontWeight: '500' as const,
+  },
+  bodySemiBold: {
+    fontFamily: 'Nunito_600SemiBold',
+    fontSize: 15,
+    fontWeight: '600' as const,
+  },
+  // Labels — uppercase tracking, always Nunito 500
+  label: {
+    fontFamily: 'Nunito_500Medium',
+    fontSize: 11,
+    fontWeight: '500' as const,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1.2,
+    color: '#999999',
+  },
+  // Chip / option text — Nunito 400
+  chip: {
+    fontFamily: 'Nunito_400Regular',
+    fontSize: 13,
+    fontWeight: '400' as const,
+  },
+  // Button text — Nunito 600
+  button: {
+    fontFamily: 'Nunito_600SemiBold',
+    fontSize: 15,
+    fontWeight: '600' as const,
+  },
+  buttonSmall: {
+    fontFamily: 'Nunito_500Medium',
+    fontSize: 13,
+    fontWeight: '500' as const,
+  },
+  // Caption / meta — Nunito 400
+  caption: {
+    fontFamily: 'Nunito_400Regular',
+    fontSize: 12,
+    fontWeight: '400' as const,
+  },
+  // Input text — Nunito 400
+  input: {
+    fontFamily: 'Nunito_400Regular',
+    fontSize: 15,
+    fontWeight: '400' as const,
+  },
+};
+
+export const OPTION_TEXT = {
+  fontSize: 13,
+  fontFamily: 'Nunito_400Regular',
+  fontWeight: '400' as const,
+  color: '#666666',
+} as const;
+
 export const COLORS = {
   background: '#F2F1F6',
   card: '#FFFFFF',
@@ -164,11 +238,22 @@ export function getEmotionColor(tag: string): { bg: string; text: string } {
 // Practice type -> calendar/legend colour
 export function getPracticeColor(practiceType: string | null | undefined): string {
   if (!practiceType) return '#CCCCCC';
-  const p = practiceType.toLowerCase();
-  if (p.includes('breathwork') || p.includes('breath')) return COLORS.throat;
-  if (p.includes('somatic')) return COLORS.heart;
-  if (p.includes('meditation') || p.includes('vipassana')) return COLORS.crown;
-  if (p.includes('yoga')) return COLORS.sacral;
-  if (p.includes('dance') || p.includes('movement') || p.includes('5rhythms')) return COLORS.solar;
+  const base = practiceType.split(':')[0].trim();
+  const map: Record<string, string> = {
+    'Breathwork': COLORS.throat,
+    'Dance / movement therapy': COLORS.solar,
+    'IFS / Internal Family Systems': COLORS.crown,
+    'Meditation / Vipassana': COLORS.thirdEye,
+    'Qi Gong / Tai Chi': COLORS.heart,
+    'Reiki / energy healing': COLORS.crown,
+    'Somatic Experiencing': COLORS.heart,
+    'Sound healing': COLORS.throat,
+    'Trauma therapy (body-based)': COLORS.root,
+    'Yoga': COLORS.sacral,
+    'Other': '#A0896B',
+  };
+  for (const [key, color] of Object.entries(map)) {
+    if (base === key || base.startsWith(key) || key.startsWith(base)) return color;
+  }
   return '#CCCCCC';
 }

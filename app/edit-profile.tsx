@@ -299,13 +299,13 @@ const s = StyleSheet.create({
   body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 },
 
   label: {
-    fontSize: 11, fontWeight: '500', color: '#c4b8a8',
-    textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#c4b8a8',
+    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8,
   },
   input: {
+    fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#3a2e25',
     backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EAE4DC',
     borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: '#3a2e25',
   },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
@@ -313,7 +313,7 @@ const s = StyleSheet.create({
     backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EAE4DC',
   },
   chipSelected: { backgroundColor: '#6B5E4E', borderColor: '#6B5E4E' },
-  chipText: { fontSize: 13, fontWeight: '500', color: '#3a2e25' },
+  chipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: '#3a2e25' },
   chipTextSel: { color: '#FFFFFF' },
 
   expCard: {

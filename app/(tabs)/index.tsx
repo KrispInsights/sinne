@@ -13,6 +13,7 @@ import { getSessions, getActiveJourneys, getJourneys, getProfile, getIntegration
 import { consumeSessionSaved } from '@/lib/events';
 import type { SessionWithCheckin, Journey, Profile, Integration, Mirror } from '@/lib/types';
 import { BodyFigureEllipses, REGION_CHAKRA_COLORS } from '@/components/BodyFigure';
+import { COLORS, OPTION_TEXT } from '@/lib/theme';
 
 const IS_DEV = process.env.EXPO_PUBLIC_DEV_MODE === 'true';
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -144,6 +145,21 @@ function getRelativeDate(iso: string): string {
   if (diff === 0) return 'Today';
   if (diff === 1) return 'Yesterday';
   return `${diff} days ago`;
+}
+
+function formatLastSessionDate(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const sessionDate = new Date(d); sessionDate.setHours(0, 0, 0, 0);
+  const diff = Math.round((today.getTime() - sessionDate.getTime()) / 86400000);
+
+  if (diff === 0) {
+    return `Today, ${d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
+  }
+  if (diff === 1) {
+    return 'Yesterday';
+  }
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function getStateName(framework: string, state: string): string {
@@ -400,13 +416,18 @@ function CalendarGrid({
                     <Text style={{ fontSize: 13, fontWeight: hasSession ? '600' : '400', color: numColor }}>{dateNum}</Text>
                   </View>
                 )}
-                <View style={{ flexDirection: 'row', gap: 3, marginTop: 4, height: 8 }}>
-                  {daySessions.slice(0, 3).map((swc, si) => (
-                    <View
-                      key={si}
-                      style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: getPracticeTypeColor(swc.session.practice_type) }}
-                    />
-                  ))}
+                <View style={{ flexDirection: 'row', gap: 3, marginTop: 4, height: 10 }}>
+                  {daySessions.slice(0, 3).map((swc, si) => {
+                    const { icon } = getSessionIcon(swc);
+                    return (
+                      <MaterialCommunityIcons
+                        key={si}
+                        name={icon as any}
+                        size={10}
+                        color={getPracticeTypeColor(swc.session.practice_type)}
+                      />
+                    );
+                  })}
                 </View>
                 <View style={{ height: 12, marginTop: 2 }}>
                   {hasInteg && (
@@ -477,15 +498,29 @@ function CalendarView({
         />
       </View>
 
-      {/* Practice type legend row */}
-      <View style={[s.iconLegend, { marginTop: 12 }]}>
-        {CALENDAR_LEGEND.map(({ color, label }) => (
-          <View key={label} style={s.legendIconItem}>
-            <View style={[s.legendDot, { backgroundColor: color }]} />
-            <Text style={s.legendIconText}>{label}</Text>
+      {/* Practice type legend row - dynamic based on sessions */}
+      {(() => {
+        const seen = new Map<string, { icon: string; color: string; label: string }>();
+        sessions.forEach((swc) => {
+          const pt = swc.session.practice_type;
+          if (!pt) return;
+          const label = pt.split(':')[0].trim();
+          if (seen.has(label)) return;
+          const { icon } = getSessionIcon(swc);
+          seen.set(label, { icon, color: getPracticeTypeColor(pt), label });
+        });
+        const legend = Array.from(seen.values());
+        return legend.length > 0 ? (
+          <View style={[s.iconLegend, { marginTop: 12 }]}>
+            {legend.map(({ icon, color, label }) => (
+              <View key={label} style={s.legendIconItem}>
+                <MaterialCommunityIcons name={icon as any} size={12} color={color} />
+                <Text style={s.legendIconText}>{label}</Text>
+              </View>
+            ))}
           </View>
-        ))}
-      </View>
+        ) : null;
+      })()}
     </View>
   );
 }
@@ -516,10 +551,9 @@ function buildSmoothPath(points: Array<{ x: number; y: number }>): string {
   return d;
 }
 
-function ArcChart({ sessions, integrations, framework }: { sessions: SessionWithCheckin[]; integrations: Integration[]; framework: string }) {
+function ArcChart({ sessions, integrations, framework, showInfoTooltip, setShowInfoTooltip }: { sessions: SessionWithCheckin[]; integrations: Integration[]; framework: string; showInfoTooltip: boolean; setShowInfoTooltip: (show: boolean) => void }) {
   const [rowW, setRowW] = useState(SCREEN_W - 80);
   const [selected, setSelected] = useState<number | null>(null);
-  const [showInfoTooltip, setShowInfoTooltip] = useState(false);
 
   const CHART_H = 200;
   const DATE_LABEL_H = 20;
@@ -588,20 +622,6 @@ function ArcChart({ sessions, integrations, framework }: { sessions: SessionWith
   if (sel && tipLeft + TIP_W > chartW - 4) tipLeft = chartW - 4 - TIP_W;
   const tipAbove = sel ? sel.y > 50 : true;
 
-  // Unique practice types present, for the legend row below the chart
-  const practiceLegend = (() => {
-    const seen = new Map<string, { icon: string; color: string; label: string }>();
-    sorted.forEach((swc) => {
-      const pt = swc.session.practice_type;
-      if (!pt) return;
-      const label = pt.split(':')[0].trim();
-      if (seen.has(label)) return;
-      const { icon } = getSessionIcon(swc);
-      seen.set(label, { icon, color: getPracticeTypeColor(pt), label });
-    });
-    return Array.from(seen.values());
-  })();
-
   return (
     <View>
       {sessions.length === 0 ? (
@@ -624,16 +644,8 @@ function ArcChart({ sessions, integrations, framework }: { sessions: SessionWith
           <ScrollView horizontal showsHorizontalScrollIndicator={false} onLayout={(e) => setRowW(e.nativeEvent.layout.width)}>
             <View style={{ width: chartW }}>
               <Svg width={chartW} height={CHART_H + DATE_LABEL_H}>
-                <Defs>
-                  <SvgLinearGradient id="arcBands" x1="0" y1="0" x2="0" y2="1">
-                    <Stop offset="0" stopColor="#8FAE9A" stopOpacity={0.1} />
-                    <Stop offset="0.5" stopColor="#D6C2A1" stopOpacity={0.1} />
-                    <Stop offset="1" stopColor="#A89ABF" stopOpacity={0.1} />
-                  </SvgLinearGradient>
-                </Defs>
-
-                {/* Soft polyvagal bands, blended */}
-                <Rect x={0} y={0} width={chartW} height={CHART_H} fill="url(#arcBands)" />
+                {/* Chart background */}
+                <Rect x={0} y={0} width={chartW} height={CHART_H} fill={COLORS.background} rx={12} ry={12} />
 
                 {/* Connecting line */}
                 <Path d={linePath} stroke="#B07FFF" strokeOpacity={0.5} strokeWidth={1.5} fill="none" strokeLinecap="round" />
@@ -730,41 +742,10 @@ function ArcChart({ sessions, integrations, framework }: { sessions: SessionWith
               </View>
             </View>
           </ScrollView>
-
-          {/* Practice type legend */}
-          {practiceLegend.length > 0 && (
-            <View style={[s.iconLegend, { marginTop: 12 }]}>
-              {practiceLegend.map(({ icon, color, label }) => (
-                <View key={label} style={s.legendIconItem}>
-                  <MaterialCommunityIcons name={icon as any} size={12} color={color} />
-                  <Text style={s.legendIconText}>{label}</Text>
-                </View>
-              ))}
-            </View>
-          )}
         </>
       )}
 
-      {/* Info icon with tooltip */}
-      <TouchableOpacity
-        style={s.arcInfoIcon}
-        onPress={() => setShowInfoTooltip(!showInfoTooltip)}
-        activeOpacity={0.7}
-      >
-        <MaterialCommunityIcons name="information-outline" size={18} color="#BBBBBB" />
-      </TouchableOpacity>
-
-      {showInfoTooltip && (
-        <TouchableOpacity
-          style={s.arcInfoTooltip}
-          onPress={() => setShowInfoTooltip(false)}
-          activeOpacity={1}
-        >
-          <Text style={s.arcInfoTooltipText}>
-            Tap any point to see session details. Position on the chart shows nervous system state.
-          </Text>
-        </TouchableOpacity>
-      )}
+      {/* Info tooltip */}
     </View>
   );
 }
@@ -790,7 +771,6 @@ function BreakdownView({ sessions, framework }: { sessions: SessionWithCheckin[]
             return (
               <View key={key} style={[s.bkNsCard, { backgroundColor: tone + '1A' }]}>
                 <View style={s.bkNsCardHeader}>
-                  <View style={[s.bkNsCardDot, { backgroundColor: tone }]} />
                   <Text style={s.bkNsCardName}>{vocabMap[key]}</Text>
                 </View>
                 <Text style={[s.bkNsCardPct, { color: tone }]}>{pct}%</Text>
@@ -812,21 +792,23 @@ function BreakdownView({ sessions, framework }: { sessions: SessionWithCheckin[]
         </View>
       )}
 
-      {/* Body regions with frequency bar */}
+      {/* Body regions with body figure */}
       {topRegions.length > 0 && (
         <View style={s.bkSection}>
           <Text style={s.bkLabel}>BODY REGIONS</Text>
-          {topRegions.map(({ region, count }) => {
-            const barColor = REGION_CHAKRA_COLORS[region] ?? '#9B7FBF';
-            const barWidth = `${Math.round((count / maxRegionCount) * 100)}%`;
+          <View style={{ alignItems: 'center', marginBottom: 16 }}>
+            <BodyFigureEllipses
+              width={SCREEN_W - 80}
+              bodySensations={topRegions.map(({ region }) => ({ region, quality: null }))}
+            />
+          </View>
+          {topRegions.slice(0, 5).map(({ region, count }) => {
+            const dotColor = REGION_CHAKRA_COLORS[region] ?? '#9B7FBF';
             return (
-              <View key={region} style={s.bkRegionRow}>
-                <View style={[s.bkRegionDot, { backgroundColor: barColor }]} />
-                <Text style={s.bkRegionName} numberOfLines={1}>{region.replace('_', ' / ')}</Text>
-                <View style={s.bkRegionTrack}>
-                  <View style={[s.bkRegionBar, { width: barWidth as any, backgroundColor: barColor }]} />
-                </View>
-                <Text style={s.bkRegionCount}>{count}</Text>
+              <View key={region} style={s.regionListRow}>
+                <View style={[s.regionListDot, { backgroundColor: dotColor }]} />
+                <Text style={s.regionListName} numberOfLines={1}>{region.replace('_', ' / ')}</Text>
+                <Text style={s.regionListCount}>{count}</Text>
               </View>
             );
           })}
@@ -1345,6 +1327,7 @@ export default function HomeScreen() {
   const [journeyExpanded, setJourneyExpanded] = useState(false);
   const [integrationPromptOpen, setIntegrationPromptOpen] = useState(false);
   const [promptedSessionId, setPromptedSessionId] = useState<string | null>(null);
+  const [showInfoTooltip, setShowInfoTooltip] = useState(false);
   const savedToastAnim = useRef(new Animated.Value(0)).current;
   const dismissedThisSessionRef = useRef(false);
 
@@ -1452,17 +1435,25 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={s.safe}>
-      <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
-
-        {/* ---- Header ---- */}
+      <View style={{ flex: 1, zIndex: 1 }}>
+        {/* Ambient gradient background */}
         <ExpoLinearGradient
-          colors={['rgba(176, 127, 255, 0.12)', 'transparent']}
-          start={{ x: 0.34, y: 0 }}
-          end={{ x: 0.66, y: 1 }}
-          style={s.gradientHeader}
-        >
+          colors={[COLORS.crownTint, COLORS.background]}
+          style={s.ambientGradient}
+          pointerEvents="none"
+        />
+
+        <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+
+          {/* ---- Header ---- */}
+          <ExpoLinearGradient
+            colors={['rgba(176, 127, 255, 0.18)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={s.gradientHeader}
+          >
           <View style={s.headerTopRow}>
-            <Text style={s.headerDate}>{formatHeaderDate()}</Text>
+            <View style={{ flex: 1 }} />
             <TouchableOpacity onPress={() => router.push('/settings' as any)} hitSlop={8}>
               <MaterialCommunityIcons name="cog-outline" size={20} color="#CCCCCC" />
             </TouchableOpacity>
@@ -1502,7 +1493,7 @@ export default function HomeScreen() {
                         </View>
                         {j.duration_days ? (
                           <View style={s.journeyCardBarBg}>
-                            <View style={[s.journeyCardBarFill, { width: `${Math.round(pct * 100)}%` as any, backgroundColor: accent }]} />
+                            <View style={[s.journeyCardBarFill, { width: `${Math.round(pct * 100)}%` as any, backgroundColor: accent + '59' }]} />
                           </View>
                         ) : null}
                       </TouchableOpacity>
@@ -1522,7 +1513,27 @@ export default function HomeScreen() {
               {/* Header row with label */}
               <View style={s.somaCardHeaderRow}>
                 <Text style={s.somaCardLabel}>YOUR SOMA</Text>
+                <TouchableOpacity
+                  onPress={() => setShowInfoTooltip(!showInfoTooltip)}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="information-outline" size={18} color="#BBBBBB" />
+                </TouchableOpacity>
               </View>
+
+              <Modal transparent visible={showInfoTooltip} animationType="fade" onRequestClose={() => setShowInfoTooltip(false)}>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.15)' }}
+                  onPress={() => setShowInfoTooltip(false)}
+                  activeOpacity={1}
+                >
+                  <View style={s.arcInfoTooltip}>
+                    <Text style={s.arcInfoTooltipText}>
+                      Tap any point to see session details. Position on the chart shows nervous system state.
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </Modal>
 
               {/* Combined filter and toggle row */}
               <View style={s.somaControlsRow}>
@@ -1535,7 +1546,7 @@ export default function HomeScreen() {
                     <Text style={s.somaFilterPillText}>
                       {SOMA_FILTERS.find((f) => f.key === somaFilter)?.label ?? 'This Week'}
                     </Text>
-                    <MaterialCommunityIcons name="chevron-down" size={8} color="#666666" />
+                    <MaterialCommunityIcons name="clock-time-four-outline" size={14} color="#666666" />
                   </TouchableOpacity>
                 )}
                 <View style={{ marginLeft: 'auto' }}>
@@ -1549,7 +1560,7 @@ export default function HomeScreen() {
                           activeOpacity={0.7}
                           style={[s.somaToggleBtn, active && s.somaToggleBtnActive]}
                         >
-                          <MaterialCommunityIcons name={icon as any} size={18} color={active ? '#B07FFF' : '#999999'} />
+                          <MaterialCommunityIcons name={icon as any} size={18} color={active ? '#FFFFFF' : '#999999'} />
                         </TouchableOpacity>
                       );
                     })}
@@ -1560,7 +1571,7 @@ export default function HomeScreen() {
                 const { sessions: fs, integrations: fi } = filterByWindow(sessions, integrations, somaFilter);
                 return (
                   <>
-                    {somaView === 'arc' && <ArcChart sessions={fs} integrations={fi} framework={framework} />}
+                    {somaView === 'arc' && <ArcChart sessions={fs} integrations={fi} framework={framework} showInfoTooltip={showInfoTooltip} setShowInfoTooltip={setShowInfoTooltip} />}
                     {somaView === 'calendar' && (
                       <CalendarView
                         sessions={fs} integrations={fi}
@@ -1580,40 +1591,30 @@ export default function HomeScreen() {
                 onPress={() => router.push({ pathname: '/session/[id]', params: { id: lastSession.session.id } } as any)}
                 activeOpacity={0.85}
               >
-                <View style={s.lastSessionTopRow}>
-                  <Text style={s.sectionLabel}>LAST SESSION</Text>
-                  <Text style={s.lastSessionDate}>{getRelativeDate(lastSession.session.created_at)}</Text>
-                </View>
+                <Text style={s.lastSessionHeader}>
+                  LAST SESSION  ·  {formatLastSessionDate(lastSession.session.created_at)}
+                  {lastSession.session.duration_minutes ? `  ·  ${lastSession.session.duration_minutes} min` : ''}
+                </Text>
                 <View style={s.lastSessionBody}>
-                  <View style={s.lastSessionLeft}>
-                    <Text style={s.lastSessionTitle}>{lastSession.session.practice_type || 'Session'}</Text>
-                    <View style={s.chipsRow}>
-                      {lastSession.session.duration_minutes ? (
-                        <View style={s.greyChip}>
-                          <Text style={s.greyChipText}>{lastSession.session.duration_minutes} min</Text>
-                        </View>
-                      ) : null}
+                  <Text style={s.lastSessionTitle}>{lastSession.session.practice_type || 'Session'}</Text>
+                  <View style={s.lastSessionColumns}>
+                    <View style={s.lastSessionLeft}>
                       {lastNsName ? (
-                        <View style={[s.wellnessChip, { backgroundColor: lastWellnessChip.bg }]}>
+                        <View style={[s.wellnessChip, { backgroundColor: lastWellnessChip.bg, alignSelf: 'flex-start' }]}>
                           <Text style={[s.wellnessChipText, { color: lastWellnessChip.text }]}>{lastNsName.charAt(0).toUpperCase() + lastNsName.slice(1)}</Text>
                         </View>
                       ) : null}
-                    </View>
-                    <View style={s.chipsRow}>
                       {lastTopEmotions.map((tag) => (
-                        <View key={tag} style={[s.emotionChip, { backgroundColor: (EMOTION_TAG_COLOR[tag] ?? '#9B7FBF') + '26' }]}>
+                        <View key={tag} style={[s.emotionChip, { backgroundColor: (EMOTION_TAG_COLOR[tag] ?? '#9B7FBF') + '26', alignSelf: 'flex-start', marginTop: 6 }]}>
                           <Text style={[s.emotionChipText, { color: EMOTION_TAG_COLOR[tag] ?? '#9B7FBF' }]}>
                             {tag.charAt(0).toUpperCase() + tag.slice(1)}
                           </Text>
                         </View>
                       ))}
                     </View>
-                  </View>
-                  <View style={s.lastSessionRight}>
-                    <BodyFigureEllipses
-                      width={80}
-                      bodySensations={lastSession.checkin?.body_sensations ?? []}
-                    />
+                    <View style={s.lastSessionRight}>
+                      <BodyFigureEllipses width={80} bodySensations={lastSession.checkin?.body_sensations ?? []} />
+                    </View>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -1718,7 +1719,6 @@ export default function HomeScreen() {
         >
           <View style={s.filterPickerSheet}>
             <View style={s.filterPickerDragHandle} />
-            <Text style={s.filterPickerTitle}>Time period</Text>
             {SOMA_FILTERS.map(({ key, label }) => (
               <TouchableOpacity
                 key={key}
@@ -1751,10 +1751,11 @@ export default function HomeScreen() {
         onUpdate={handleJourneyUpdate}
       />
 
-      {/* FAB */}
-      <TouchableOpacity style={s.fab} onPress={() => setActionSheetOpen(true)} activeOpacity={0.85}>
-        <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
-      </TouchableOpacity>
+        {/* FAB */}
+        <TouchableOpacity style={s.fab} onPress={() => setActionSheetOpen(true)} activeOpacity={0.85}>
+          <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -1762,9 +1763,20 @@ export default function HomeScreen() {
 // ---- Styles ----
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FAFAFA' },
+  safe: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 100 },
+
+  // Ambient gradient background
+  ambientGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    width: '100%',
+    zIndex: 0,
+  },
 
   // Header
   gradientHeader: {
@@ -1808,8 +1820,8 @@ const s = StyleSheet.create({
     paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#EEEEEC',
   },
   journeySheetSessionDot: { width: 10, height: 10, borderRadius: 5 },
-  journeySheetSessionText: { flex: 1, fontSize: 14, fontFamily: 'DMSans_400Regular', color: '#1A1A1A' },
-  journeySheetSessionDate: { fontSize: 12, fontFamily: 'DMSans_400Regular', color: '#666666' },
+  journeySheetSessionText: { flex: 1, fontSize: 14, fontFamily: 'Nunito_400Regular', color: '#666666' },
+  journeySheetSessionDate: { fontSize: 12, fontFamily: 'Nunito_400Regular', color: '#999999' },
   journeySheetEndBtn: { marginTop: 8, paddingVertical: 12, alignItems: 'center' },
   journeySheetEndText: { fontSize: 14, fontWeight: '500', color: '#999999' },
   journeySheetLogBtn: {
@@ -1818,7 +1830,7 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     marginTop: 12,
   },
-  journeySheetLogBtnText: { fontSize: 15, fontWeight: '500', color: '#FFFFFF' },
+  journeySheetLogBtnText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
   journeyConfirmOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   journeyConfirmTitle: { fontSize: 17, fontWeight: '600', color: '#1A1A1A', textAlign: 'center', marginBottom: 10 },
   journeyConfirmBody: { fontSize: 14, fontWeight: '400', color: '#666666', textAlign: 'center', lineHeight: 20, marginBottom: 28 },
@@ -1826,7 +1838,7 @@ const s = StyleSheet.create({
     width: '100%', height: 48, borderRadius: 12,
     backgroundColor: '#B07FFF', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  journeyConfirmPrimaryText: { fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
+  journeyConfirmPrimaryText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
   journeyConfirmSecondary: { width: '100%', height: 48, alignItems: 'center', justifyContent: 'center' },
   journeyConfirmSecondaryText: { fontSize: 15, fontWeight: '400', color: '#999999' },
 
@@ -1845,7 +1857,7 @@ const s = StyleSheet.create({
 
   // Section labels
   sectionLabel: {
-    fontSize: 11, fontWeight: '500', color: '#999999',
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
     letterSpacing: 1.2, textTransform: 'uppercase',
   },
 
@@ -1854,8 +1866,8 @@ const s = StyleSheet.create({
   journeyCard: { padding: 20 },
   journeyCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   journeyCardName: { fontSize: 18, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A' },
-  journeyCardCount: { fontSize: 13, fontWeight: '400', color: '#999999' },
-  journeyCardBarBg: { height: 6, borderRadius: 8, backgroundColor: '#E8E8E8' },
+  journeyCardCount: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: '#999999' },
+  journeyCardBarBg: { height: 6, borderRadius: 8, backgroundColor: COLORS.accentTint },
   journeyCardBarFill: { height: 6, borderRadius: 8 },
 
   // Your Soma card
@@ -1869,21 +1881,22 @@ const s = StyleSheet.create({
   },
   somaFilterPill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#F0F0F0', borderRadius: 12, height: 36,
+    backgroundColor: COLORS.accentTint, borderRadius: 12, height: 36,
     paddingHorizontal: 14, paddingVertical: 6,
     alignSelf: 'flex-start',
+    borderWidth: 1, borderColor: '#B07FFF4D',
   },
   somaFilterPillText: {
-    fontSize: 13, fontWeight: '400', color: '#666666',
-    fontFamily: 'DMSans_400Regular',
+    ...OPTION_TEXT, fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
   },
   somaControlsRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16,
   },
-  somaToggle: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F0F0', borderRadius: 12, height: 36, padding: 3, gap: 2 },
+  somaToggle: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.accentTint, borderRadius: 12, height: 36, padding: 3, gap: 2 },
   somaToggleBtn: { width: 30, height: 30, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   somaToggleBtnActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.accent,
     shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2,
   },
 
@@ -1900,9 +1913,8 @@ const s = StyleSheet.create({
   arcLegendText: { fontSize: 12, fontWeight: '400', color: '#666666' },
   arcInfoIcon: { position: 'absolute', bottom: 12, right: 12 },
   arcInfoTooltip: {
-    position: 'absolute', bottom: 36, right: 12,
-    backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12,
-    maxWidth: 240,
+    position: 'absolute', top: '35%', alignSelf: 'center',
+    width: 260, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16,
     shadowColor: '#000000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 4,
   },
   arcInfoTooltipText: { fontSize: 13, fontFamily: 'Nunito_400Regular', color: '#666666', lineHeight: 18 },
@@ -1910,24 +1922,24 @@ const s = StyleSheet.create({
     position: 'absolute', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16,
     shadowColor: '#000000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 4,
   },
-  arcTooltipDate: { fontSize: 13, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 },
-  arcTooltipRow: { fontSize: 13, fontWeight: '400', color: '#666666', textTransform: 'capitalize', lineHeight: 18, marginBottom: 4 },
-  arcTooltipEmotion: { fontSize: 14, fontWeight: '600', textTransform: 'capitalize', lineHeight: 18 },
+  arcTooltipDate: { fontSize: 13, fontWeight: '500', color: '#666666', fontFamily: 'Nunito_500Medium', marginBottom: 4 },
+  arcTooltipRow: { fontSize: 13, fontWeight: '400', fontFamily: 'Nunito_400Regular', color: '#666666', textTransform: 'capitalize', lineHeight: 18, marginBottom: 4 },
+  arcTooltipEmotion: { fontSize: 14, fontWeight: '500', fontFamily: 'Nunito_500Medium', textTransform: 'capitalize', lineHeight: 18 },
 
   // Last session card
-  lastSessionTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  lastSessionDate: { fontSize: 12, fontWeight: '400', color: '#999999' },
-  lastSessionBody: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  lastSessionLeft: { flex: 1, flexDirection: 'column', gap: 6 },
-  lastSessionRight: { width: 80, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' },
-  lastSessionTitle: { fontSize: 18, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A' },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  lastSessionHeader: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: COLORS.textTertiary, marginBottom: 14, textAlign: 'center' },
+  lastSessionBody: { flexDirection: 'column', gap: 10 },
+  lastSessionTitle: { fontSize: 18, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A', textAlign: 'center', width: '100%' },
+  lastSessionColumns: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  lastSessionLeft: { flex: 1, gap: 6 },
+  lastSessionRight: { width: 90, alignItems: 'center', justifyContent: 'center' },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 6, marginBottom: 12 },
   greyChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#F0F0F0' },
   greyChipText: { fontSize: 13, fontWeight: '500', color: '#666666' },
   wellnessChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6 },
-  wellnessChipText: { fontSize: 13, fontWeight: '500' },
+  wellnessChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400' },
   emotionChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6 },
-  emotionChipText: { fontSize: 13, fontWeight: '500' },
+  emotionChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400' },
 
   // Bottom sheets (general)
   sheet: {
@@ -1943,8 +1955,8 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 24, paddingVertical: 14, gap: 16, minHeight: 64,
   },
-  actionLabel: { fontSize: 16, fontWeight: '500', color: '#1A1A1A' },
-  actionSubtitle: { fontSize: 12, color: '#999999', marginTop: 2 },
+  actionLabel: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#1A1A1A' },
+  actionSubtitle: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: '#999999', marginTop: 2 },
   actionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 24 },
 
   // Integration prompt
@@ -1956,9 +1968,9 @@ const s = StyleSheet.create({
     height: 48, borderRadius: 24, backgroundColor: '#B07FFF',
     alignItems: 'center', justifyContent: 'center',
   },
-  integrationPromptPrimaryText: { fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
+  integrationPromptPrimaryText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
   integrationPromptSecondary: { height: 48, borderRadius: 24, backgroundColor: '#E8E8E8', alignItems: 'center', justifyContent: 'center' },
-  integrationPromptSecondaryText: { fontSize: 15, fontWeight: '500', color: '#666666' },
+  integrationPromptSecondaryText: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#666666' },
 
   // Calendar month nav (inline soma view)
   calNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
@@ -1968,26 +1980,23 @@ const s = StyleSheet.create({
   // Breakdown
   bkSection: { marginBottom: 20 },
   bkLabel: {
-    fontSize: 11, fontWeight: '600', color: '#999999',
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
     textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10,
   },
   // NS state cards (3 side-by-side)
   bkNsCards: { flexDirection: 'row', gap: 8 },
-  bkNsCard: { flex: 1, borderRadius: 12, padding: 14 },
-  bkNsCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  bkNsCardDot: { width: 8, height: 8, borderRadius: 4 },
-  bkNsCardName: { fontSize: 13, fontWeight: '500', color: '#1A1A1A' },
-  bkNsCardPct: { fontSize: 28, fontFamily: 'DMSerifDisplay_400Regular', lineHeight: 32 },
+  bkNsCard: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center' },
+  bkNsCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  bkNsCardName: { fontSize: 13, fontWeight: '400', color: '#999999', fontFamily: 'Nunito_400Regular', textAlign: 'center' },
+  bkNsCardPct: { fontSize: 28, fontFamily: 'DMSerifDisplay_400Regular', lineHeight: 32, textAlign: 'center' },
   // Dominant emotion
   bkDominantCard: { backgroundColor: '#B07FFF14', borderRadius: 12, padding: 16, alignItems: 'center' },
   bkDominantEmotion: { fontSize: 28, fontFamily: 'DMSerifDisplay_400Regular', color: '#B07FFF', textTransform: 'capitalize', textAlign: 'center' },
-  // Body regions with bar
-  bkRegionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
-  bkRegionDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-  bkRegionName: { width: 110, fontSize: 14, fontWeight: '400', color: '#1A1A1A', textTransform: 'capitalize' },
-  bkRegionTrack: { flex: 1, height: 10, borderRadius: 5, backgroundColor: '#F0F0F0', overflow: 'hidden' },
-  bkRegionBar: { height: 10, borderRadius: 5 },
-  bkRegionCount: { fontSize: 14, fontWeight: '600', color: '#1A1A1A', minWidth: 20, textAlign: 'right' },
+  // Body regions with list
+  regionListRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  regionListDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
+  regionListName: { flex: 1, fontFamily: 'Nunito_400Regular', fontSize: 14, color: '#666666', textTransform: 'capitalize' },
+  regionListCount: { fontFamily: 'Nunito_400Regular', fontSize: 14, color: '#999999' },
 
   // Session detail sheet
   detailSheet: {
@@ -2002,8 +2011,8 @@ const s = StyleSheet.create({
   detailNsText: { fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
   detailSection: { marginBottom: 16 },
   detailSectionLabel: {
-    fontSize: 10, fontWeight: '700', color: '#999999',
-    textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8,
   },
   detailChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   detailChipText: { fontSize: 13, fontWeight: '500' },
@@ -2011,7 +2020,7 @@ const s = StyleSheet.create({
   detailBodyDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   detailBodyText: { fontSize: 14, fontWeight: '400', color: '#1A1A1A' },
   detailBodyQuality: { fontSize: 13, fontWeight: '400', color: '#999999' },
-  detailNoteText: { fontSize: 14, fontWeight: '400', color: '#666666', lineHeight: 22, fontStyle: 'italic' },
+  detailNoteText: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#666666', lineHeight: 22, fontStyle: 'italic' },
 
   // Day detail sheet
   daySheetRow: {
@@ -2019,8 +2028,8 @@ const s = StyleSheet.create({
     paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#EEEEEC',
   },
   daySheetDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-  daySheetRowTitle: { fontSize: 15, fontWeight: '500', color: '#1A1A1A', textTransform: 'capitalize' },
-  daySheetRowSubtitle: { fontSize: 13, fontWeight: '400', color: '#999999', marginTop: 2 },
+  daySheetRowTitle: { ...OPTION_TEXT, fontSize: 15, fontWeight: '400', textTransform: 'capitalize' },
+  daySheetRowSubtitle: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: '#999999', marginTop: 2 },
 
   // Saved toast
   savedToast: { position: 'absolute', top: 100, left: 0, right: 0, alignItems: 'center' },
@@ -2039,15 +2048,11 @@ const s = StyleSheet.create({
     width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0',
     alignSelf: 'center', marginBottom: 16,
   },
-  filterPickerTitle: {
-    fontSize: 16, fontWeight: '600', color: '#1A1A1A',
-    paddingHorizontal: 24, marginBottom: 12,
-  },
   filterPickerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 24, paddingVertical: 14, minHeight: 48,
   },
-  filterPickerRowText: { fontSize: 15, fontWeight: '400', color: '#1A1A1A' },
+  filterPickerRowText: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#1A1A1A' },
   filterPickerRowTextSelected: { fontWeight: '600', color: '#B07FFF' },
 
   // Journey edit mode
@@ -2056,8 +2061,8 @@ const s = StyleSheet.create({
     marginBottom: 20, paddingBottom: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#EEEEEC',
   },
   journeyEditTitle: { fontSize: 16, fontWeight: '600', color: '#1A1A1A' },
-  journeyEditCancel: { fontSize: 15, fontWeight: '400', color: '#999999' },
-  journeyEditSave: { fontSize: 15, fontWeight: '600', color: '#B07FFF' },
+  journeyEditCancel: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#999999' },
+  journeyEditSave: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#B07FFF' },
   journeyEditLabel: {
     fontSize: 10, fontWeight: '700', color: '#999999',
     textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,

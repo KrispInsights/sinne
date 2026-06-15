@@ -215,8 +215,8 @@ const s = StyleSheet.create({
   },
   sectionWithMargin: { marginTop: 16 },
   sectionLabel: {
-    fontSize: 11, fontWeight: '600', color: COLORS.textTertiary,
-    letterSpacing: 0.77, marginBottom: 8,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
+    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8,
   },
   sectionContent: {
     fontSize: 15, fontFamily: FONTS.body, fontWeight: '400',

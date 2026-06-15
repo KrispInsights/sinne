@@ -97,62 +97,6 @@ function compileExportText(mirrors: Mirror[]): string {
   return lines.join('\n').trimEnd();
 }
 
-function computeMarkers(sessions: SessionWithCheckin[]): { sessionsCount: number; returningTheme: string; mostActiveArea: string } {
-  const monthStart = startOfMonth(new Date());
-  const emotionCounts = new Map<string, number>();
-  const bodyCounts = new Map<string, number>();
-
-  let sessionsCount = 0;
-
-  sessions.forEach(({ session, checkin }) => {
-    const created = new Date(session.created_at);
-    if (created >= monthStart) sessionsCount += 1;
-
-    // Count emotions
-    if (checkin?.emotion_tags) {
-      checkin.emotion_tags.forEach((tag) => {
-        emotionCounts.set(tag, (emotionCounts.get(tag) || 0) + 1);
-      });
-    }
-
-    // Count body regions
-    if (checkin?.body_sensations) {
-      checkin.body_sensations.forEach((sensation) => {
-        bodyCounts.set(sensation.region, (bodyCounts.get(sensation.region) || 0) + 1);
-      });
-    }
-  });
-
-  // Get most frequent emotion
-  let returningTheme = '—';
-  let maxEmotionCount = 0;
-  emotionCounts.forEach((count, emotion) => {
-    if (count > maxEmotionCount) {
-      maxEmotionCount = count;
-      returningTheme = emotion.charAt(0).toUpperCase() + emotion.slice(1);
-    }
-  });
-
-  // Get most frequent body region
-  let mostActiveArea = '—';
-  let maxBodyCount = 0;
-  bodyCounts.forEach((count, region) => {
-    if (count > maxBodyCount) {
-      maxBodyCount = count;
-      // Convert region key to readable label
-      const regionLabels: Record<string, string> = {
-        head: 'Head', eyes: 'Eyes', jaw: 'Jaw', throat: 'Throat',
-        chest: 'Chest', shoulders: 'Shoulders', arms: 'Arms',
-        solar_plexus: 'Solar plexus', pelvis: 'Pelvis', legs: 'Legs',
-        spine: 'Spine', full_body: 'Full body',
-      };
-      mostActiveArea = regionLabels[region] || region;
-    }
-  });
-
-  return { sessionsCount, returningTheme, mostActiveArea };
-}
-
 // ---- Generation loading view ----
 
 function GenerationView({ type }: { type: MirrorPromptType }) {
@@ -222,17 +166,15 @@ export default function MirrorScreen() {
   const [promptType, setPromptType] = useState<MirrorPromptType>(null);
   const [generating, setGenerating] = useState<MirrorPromptType>(null);
   const [exportModalVisible, setExportModalVisible] = useState(false);
-  const [markers, setMarkers] = useState({ sessionsCount: 0, returningTheme: '—', mostActiveArea: '—' });
   const [unlockStatus, setUnlockStatus] = useState({ unlocked: true, daysSinceSignup: 0, totalSessions: 0, sessionsNeeded: 0 });
   const toastAnim = useRef(new Animated.Value(0)).current;
 
   const load = useCallback(async () => {
-    const [m, weekly, monthly, sessions, status] = await Promise.all([
-      getMirrors(), shouldShowWeeklyMirror(), shouldShowMonthlyMirror(), getSessions(), getMirrorUnlockStatus(),
+    const [m, weekly, monthly, status] = await Promise.all([
+      getMirrors(), shouldShowWeeklyMirror(), shouldShowMonthlyMirror(), getMirrorUnlockStatus(),
     ]);
     setMirrors(m);
     setPromptType(monthly ? 'monthly' : weekly ? 'weekly' : null);
-    setMarkers(computeMarkers(sessions));
     setUnlockStatus(status);
   }, []);
 
@@ -387,21 +329,6 @@ export default function MirrorScreen() {
                 </TouchableOpacity>
               </View>
             )}
-            <View style={s.markersRow}>
-              <View style={[s.markerCard, { backgroundColor: COLORS.heartTint }]}>
-                <Text style={s.markerLabel}>Sessions</Text>
-                <Text style={s.markerSubLabel}>This month</Text>
-                <Text style={[s.markerCount, { color: COLORS.heart }]}>{markers.sessionsCount}</Text>
-              </View>
-              <View style={[s.markerCard, { backgroundColor: COLORS.throatTint }]}>
-                <Text style={s.markerLabel}>Returning theme</Text>
-                <Text style={[s.markerTheme, { color: COLORS.throat }]}>{markers.returningTheme}</Text>
-              </View>
-              <View style={[s.markerCard, { backgroundColor: COLORS.crownTint }]}>
-                <Text style={s.markerLabel}>Most active area</Text>
-                <Text style={[s.markerTheme, { color: COLORS.crown }]}>{markers.mostActiveArea}</Text>
-              </View>
-            </View>
 
             <Text style={s.sectionLabel}>REFLECTIONS</Text>
 
@@ -487,23 +414,16 @@ const s = StyleSheet.create({
     borderRadius: 24, paddingHorizontal: 28, height: 48,
     alignItems: 'center', justifyContent: 'center',
   },
-  bannerBtnText: { fontSize: 15, fontWeight: '500', color: COLORS.accent },
+  bannerBtnText: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: COLORS.accent },
 
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
   },
   sectionLabel: {
-    fontSize: 11, fontWeight: '600', color: COLORS.textTertiary,
-    textTransform: 'uppercase', letterSpacing: 1.2,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500',
+    textTransform: 'uppercase', letterSpacing: 1.2, color: '#999999',
   },
   exportLinkText: { fontSize: 13, fontWeight: '500', color: COLORS.accent },
-
-  markersRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
-  markerCard: { flex: 1, borderRadius: 16, padding: 14, alignItems: 'flex-start' },
-  markerCount: { fontSize: 24, fontWeight: '600' },
-  markerLabel: { fontSize: 11, fontWeight: '500', color: COLORS.textTertiary },
-  markerSubLabel: { fontSize: 12, fontWeight: '400', color: COLORS.textTertiary, marginTop: 2, marginBottom: 6 },
-  markerTheme: { fontSize: 14, fontWeight: '600', marginTop: 6 },
 
   mirrorCard: {
     backgroundColor: COLORS.card, borderRadius: RADII.card, padding: 20,
@@ -514,8 +434,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 4,
   },
   typePillText: { fontSize: 11, fontWeight: '500', color: COLORS.accent },
-  cardDateRange: { fontSize: 12, color: COLORS.textTertiary, marginBottom: 12 },
-  cardContent: { fontSize: 15, fontFamily: FONTS.body, fontWeight: '400', lineHeight: 25, color: COLORS.text },
+  cardDateRange: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: '#999999', marginBottom: 12 },
+  cardContent: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', lineHeight: 22, color: '#666666' },
 
   lockedState: {
     alignItems: 'center', justifyContent: 'center',
@@ -560,7 +480,7 @@ const s = StyleSheet.create({
     width: '100%', height: 48, backgroundColor: COLORS.accent,
     borderRadius: 24, alignItems: 'center', justifyContent: 'center',
   },
-  exportModalBtnText: { fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
+  exportModalBtnText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
 
   // Generation loading view
   genContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20, paddingHorizontal: 40 },

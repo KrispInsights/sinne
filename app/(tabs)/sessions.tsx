@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getSessions, getJourneys } from '@/lib/storage';
 import type { SessionWithCheckin, Journey } from '@/lib/types';
 import { BodyFigureEllipses } from '@/components/BodyFigure';
-import { COLORS, RADII, CARD_SHADOW, FONTS, getStateColor, getEmotionColor } from '@/lib/theme';
+import { COLORS, RADII, CARD_SHADOW, FONTS, getStateColor, getEmotionColor, OPTION_TEXT } from '@/lib/theme';
 
 function formatSessionDateTime(iso: string, durationMinutes?: number | null): string {
   const d = new Date(iso);
@@ -27,6 +27,36 @@ function formatDuration(minutes: number | null | undefined): string | null {
 function capitalize(s: string): string {
   if (!s) return s;
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function getWeekStart(): Date {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? 6 : day - 1; // Mon = 0, Sun = 6
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+function getMonthStart(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+}
+
+function computeStats(sessions: SessionWithCheckin[]): { thisWeek: number; thisMonth: number; total: number } {
+  const weekStart = getWeekStart();
+  const monthStart = getMonthStart();
+  let thisWeek = 0;
+  let thisMonth = 0;
+
+  sessions.forEach(({ session }) => {
+    const created = new Date(session.created_at);
+    if (created >= weekStart) thisWeek += 1;
+    if (created >= monthStart) thisMonth += 1;
+  });
+
+  return { thisWeek, thisMonth, total: sessions.length };
 }
 
 function getJourneyDay(sessionIso: string, journey: Journey): number | null {
@@ -67,7 +97,6 @@ function SessionCard({ swc, journeyName, onPress }: { swc: SessionWithCheckin; j
   const tags = (checkin?.emotion_tags ?? []).slice(0, 2);
   const stateKey = checkin?.nervous_system_state?.toLowerCase();
   const stateChip = getStateColor(stateKey);
-  const durationLabel = formatDuration(session.duration_minutes);
 
   return (
     <TouchableOpacity style={[s.card, CARD_SHADOW]} onPress={onPress} activeOpacity={0.7}>
@@ -80,11 +109,6 @@ function SessionCard({ swc, journeyName, onPress }: { swc: SessionWithCheckin; j
         <Text style={s.cardDate}>{formatSessionDateTime(session.created_at, session.duration_minutes)}</Text>
         <Text style={s.cardTitle}>{session.practice_type || 'Session'}</Text>
         <View style={s.chipsRow}>
-          {durationLabel ? (
-            <View style={s.greyChip}>
-              <Text style={s.greyChipText}>{durationLabel}</Text>
-            </View>
-          ) : null}
           {stateKey ? (
             <View style={[s.stateChip, { backgroundColor: stateChip.bg }]}>
               <Text style={[s.stateChipText, { color: stateChip.text }]}>{capitalize(stateKey)}</Text>
@@ -129,6 +153,8 @@ export default function SessionsScreen() {
 
   const journeyMap: Record<string, Journey> = {};
   journeys.forEach((j) => { journeyMap[j.id] = j; });
+
+  const stats = computeStats(sessions);
 
   function buildSessionRows() {
     let lastDayLabel: string | null = null;
@@ -178,7 +204,6 @@ export default function SessionsScreen() {
       <View style={s.header}>
         <View>
           <Text style={s.title}>Sessions</Text>
-          <Text style={s.subtitle}>{sessions.length} recorded sessions</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/settings' as any)} hitSlop={8}>
           <MaterialCommunityIcons name="cog-outline" size={20} color="#CCCCCC" />
@@ -191,6 +216,22 @@ export default function SessionsScreen() {
         </View>
       ) : (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={s.listContent} showsVerticalScrollIndicator={false}>
+          {/* Stats row */}
+          <View style={s.statsRow}>
+            <View style={[s.statBox, CARD_SHADOW]}>
+              <Text style={[s.statCount, { color: COLORS.throat }]}>{stats.thisWeek}</Text>
+              <Text style={s.statLabel}>This week</Text>
+            </View>
+            <View style={[s.statBox, CARD_SHADOW]}>
+              <Text style={[s.statCount, { color: COLORS.heart }]}>{stats.thisMonth}</Text>
+              <Text style={s.statLabel}>This month</Text>
+            </View>
+            <View style={[s.statBox, CARD_SHADOW]}>
+              <Text style={[s.statCount, { color: COLORS.sacral }]}>{stats.total}</Text>
+              <Text style={s.statLabel}>Total</Text>
+            </View>
+          </View>
+
           {buildSessionRows()}
         </ScrollView>
       )}
@@ -254,6 +295,14 @@ const s = StyleSheet.create({
 
   listContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 40, gap: 20 },
 
+  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
+  statBox: {
+    flex: 1, backgroundColor: COLORS.card, borderRadius: 12, padding: 14,
+    alignItems: 'flex-start', position: 'relative',
+  },
+  statCount: { fontSize: 28, fontFamily: FONTS.display, marginBottom: 4, marginTop: 8 },
+  statLabel: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: COLORS.textTertiary },
+
   // FAB
   fab: {
     position: 'absolute',
@@ -287,27 +336,27 @@ const s = StyleSheet.create({
     alignSelf: 'flex-start', backgroundColor: COLORS.crownTint,
     borderRadius: 24, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 6,
   },
-  journeyPillText: { fontSize: 11, fontWeight: '500', color: COLORS.crown },
+  journeyPillText: { fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.crown },
 
-  cardDate: { fontSize: 12, fontWeight: '400', color: COLORS.textTertiary },
+  cardDate: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: COLORS.textTertiary },
   cardTitle: { fontSize: 18, fontFamily: FONTS.display, color: COLORS.text, marginTop: 2, marginBottom: 8 },
 
   chipsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   greyChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: COLORS.chipBg },
   greyChipText: { fontSize: 13, fontWeight: '500', color: COLORS.textSecondary },
   stateChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6 },
-  stateChipText: { fontSize: 13, fontWeight: '500' },
+  stateChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400' },
   emotionChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6 },
-  emotionChipText: { fontSize: 13, fontWeight: '500' },
+  emotionChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400' },
 
-  cardNote: { fontSize: 13, fontWeight: '400', color: '#999999', marginTop: 8, lineHeight: 18 },
+  cardNote: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#999999', marginTop: 8, lineHeight: 22 },
 
   dayPillRow: {},
   dayPill: {
     alignSelf: 'flex-start', backgroundColor: COLORS.crownTint,
     borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6,
   },
-  dayPillText: { fontSize: 11, fontWeight: '500', color: COLORS.crown, letterSpacing: 0.3 },
+  dayPillText: { fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.crown, letterSpacing: 1.2, textTransform: 'uppercase' },
 
   sheet: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -322,7 +371,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 24, paddingVertical: 14, gap: 16, minHeight: 64,
   },
-  actionLabel: { fontSize: 16, fontWeight: '500', color: '#1A1A1A' },
-  actionSubtitle: { fontSize: 12, color: '#999999', marginTop: 2 },
+  actionLabel: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#1A1A1A' },
+  actionSubtitle: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: '#999999', marginTop: 2 },
   actionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 24 },
 });

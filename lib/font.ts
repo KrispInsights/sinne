@@ -2,23 +2,23 @@ import React from 'react';
 import { Text, TextInput, StyleSheet } from 'react-native';
 
 const WEIGHT_TO_FAMILY: Record<string, string> = {
-  '100': 'DMSans_400Regular',
-  '200': 'DMSans_400Regular',
-  '300': 'DMSans_400Regular',
-  '400': 'DMSans_400Regular',
-  normal: 'DMSans_400Regular',
-  '500': 'DMSans_500Medium',
-  '600': 'DMSans_600SemiBold',
-  '700': 'DMSans_700Bold',
-  '800': 'DMSans_700Bold',
-  '900': 'DMSans_700Bold',
-  bold: 'DMSans_700Bold',
+  '100': 'Nunito_400Regular',
+  '200': 'Nunito_400Regular',
+  '300': 'Nunito_400Regular',
+  '400': 'Nunito_400Regular',
+  normal: 'Nunito_400Regular',
+  '500': 'Nunito_500Medium',
+  '600': 'Nunito_600SemiBold',
+  '700': 'Nunito_700Bold',
+  '800': 'Nunito_700Bold',
+  '900': 'Nunito_700Bold',
+  bold: 'Nunito_700Bold',
 };
 
 function fontFamilyForStyle(style: unknown): string {
   const flat = (StyleSheet.flatten(style as never) || {}) as { fontWeight?: string | number };
   const weight = String(flat.fontWeight ?? '400');
-  return WEIGHT_TO_FAMILY[weight] || 'DMSans_400Regular';
+  return WEIGHT_TO_FAMILY[weight] || 'Nunito_400Regular';
 }
 
 let applied = false;

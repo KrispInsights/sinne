@@ -15,6 +15,11 @@ function pad(n: number): string {
 function formatDateRange(mirror: Mirror): string {
   const start = new Date(mirror.period_start + 'T00:00:00');
   const end = new Date(mirror.period_end + 'T00:00:00');
+  if (mirror.type === 'journey') {
+    const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startStr} – ${endStr}`;
+  }
   if (mirror.type === 'monthly') {
     return start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   }
@@ -74,8 +79,12 @@ export default function MirrorDetailScreen() {
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-        <View style={s.typePill}>
-          <Text style={s.typePillText}>{mirror.type === 'weekly' ? 'Weekly Mirror' : 'Monthly Mirror'}</Text>
+        <View style={[s.typePill, mirror.type === 'journey' && { backgroundColor: '#F7F0E7' }]}>
+          <Text style={[s.typePillText, mirror.type === 'journey' && { color: '#C49A6C' }]}>
+            {mirror.type === 'journey'
+              ? `Journey · ${mirror.journey_name ?? 'Journey'}`
+              : mirror.type === 'weekly' ? 'Weekly Mirror' : 'Monthly Mirror'}
+          </Text>
         </View>
         <Text style={s.dateRange}>{formatDateRange(mirror)}</Text>
 

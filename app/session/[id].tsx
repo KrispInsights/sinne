@@ -302,18 +302,25 @@ export default function SessionDetailScreen() {
             {(checkin?.body_sensations?.length ?? 0) > 0 && (
               <View style={s.narrativeCard}>
                 <Text style={s.narrativeSectionLabel}>BODY</Text>
-                {checkin!.body_sensations.map((bs) => {
-                  const region = BODY_REGIONS.find((r) => r.key === bs.region);
-                  return (
-                    <View key={bs.region} style={s.bodyInlineRow}>
-                      <BodyFigureEllipses width={72} bodySensations={[bs]} />
-                      <View style={{ marginLeft: 12 }}>
-                        <Text style={s.bodyInlineName}>{region?.label ?? bs.region}</Text>
-                        {bs.quality && <Text style={s.bodyInlineQuality}>{capitalize(bs.quality)}</Text>}
+                <View style={{ alignSelf: 'center' }}>
+                  <BodyFigureEllipses width={180} bodySensations={checkin!.body_sensations} />
+                </View>
+                <View style={s.bodyList}>
+                  {checkin!.body_sensations.map((bs) => {
+                    const region = BODY_REGIONS.find((r) => r.key === bs.region);
+                    return (
+                      <View key={bs.region} style={s.bodyRow}>
+                        <View style={[s.bodyDot, { backgroundColor: REGION_COLORS[bs.region] ?? '#9B7FBF' }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.bodyRegionName}>
+                            {region?.label ?? bs.region}
+                            {bs.quality && <Text style={s.bodyQuality}> · {capitalize(bs.quality)}</Text>}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                  );
-                })}
+                    );
+                  })}
+                </View>
               </View>
             )}
 
@@ -645,7 +652,7 @@ const s = StyleSheet.create({
 
   // Hero header gradient zone
   heroHeader: {
-    height: 160,
+    height: 200,
     paddingHorizontal: 20,
     paddingTop: 12,
     position: 'relative',
@@ -668,18 +675,18 @@ const s = StyleSheet.create({
   },
   heroEditText: { fontSize: 15, color: '#B07FFF', fontWeight: '500' },
   heroContent: {
-    paddingTop: 52,
-    gap: 6,
+    paddingTop: 60,
+    gap: 8,
   },
   heroDateDuration: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    color: '#999999',
     fontFamily: FONTS.body,
   },
   heroPractice: {
-    fontSize: 20,
+    fontSize: 28,
     fontFamily: FONTS.display,
-    color: COLORS.text,
+    color: '#1A1A1A',
   },
   heroJourneyPill: {
     alignSelf: 'flex-start',
@@ -725,24 +732,24 @@ const s = StyleSheet.create({
     marginBottom: 16,
   },
   narrativeSectionLabel: {
-    fontSize: 10,
-    color: COLORS.textTertiary,
+    fontSize: 11,
+    color: '#999999',
     letterSpacing: 1.2,
     marginBottom: 8,
-    fontFamily: FONTS.bodyMedium,
+    fontFamily: 'Nunito_500Medium',
     fontWeight: '500',
+    textTransform: 'uppercase',
   },
   narrativeMovementValue: {
-    fontSize: 26,
+    fontSize: 24,
     fontFamily: FONTS.display,
     color: COLORS.text,
     marginBottom: 4,
   },
   narrativeSensationTag: {
-    fontSize: 13,
-    fontFamily: FONTS.body,
-    color: COLORS.textSecondary,
-    fontStyle: 'italic',
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: '#666666',
     marginBottom: 12,
   },
   narrativeDivider: {
@@ -755,19 +762,19 @@ const s = StyleSheet.create({
   bodyInlineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   bodyInlineName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
-    color: COLORS.text,
-    fontFamily: FONTS.bodyMedium,
+    color: '#1A1A1A',
+    fontFamily: 'Nunito_500Medium',
   },
   bodyInlineQuality: {
-    fontSize: 12,
+    fontSize: 13,
     fontStyle: 'italic',
-    color: COLORS.textSecondary,
-    fontFamily: FONTS.body,
+    color: '#999999',
+    fontFamily: 'Nunito_400Regular',
   },
 
   // Connection quote
@@ -785,10 +792,10 @@ const s = StyleSheet.create({
 
   // Notes text
   narrativeNoteText: {
-    fontSize: 15,
+    fontSize: 16,
     color: COLORS.text,
-    lineHeight: 22,
-    fontFamily: FONTS.body,
+    lineHeight: 24,
+    fontFamily: 'Nunito_400Regular',
   },
 
   // Edit mode top bar
@@ -820,20 +827,20 @@ const s = StyleSheet.create({
 
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
   chip: {
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, fontSize: 14,
   },
   chipOutline: {
     backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
   },
   chipSelected: { backgroundColor: '#B07FFF', borderColor: '#B07FFF' },
-  chipText: { ...OPTION_TEXT },
+  chipText: { ...OPTION_TEXT, fontSize: 14 },
   chipTextSel: { color: '#FFFFFF' },
 
-  bodyList: { gap: 8 },
-  bodyRow: { flexDirection: 'row', alignItems: 'center' },
-  bodyDot: { width: 7, height: 7, borderRadius: 3.5, marginRight: 8, flexShrink: 0 },
-  bodyRegionName: { fontSize: 14, fontWeight: '500', color: '#1A1A1A' },
-  bodyQuality: { fontSize: 13, color: '#666666', fontStyle: 'italic' },
+  bodyList: { gap: 8, marginTop: 12 },
+  bodyRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  bodyDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8, flexShrink: 0 },
+  bodyRegionName: { fontSize: 15, fontWeight: '500', color: '#1A1A1A', fontFamily: 'Nunito_500Medium' },
+  bodyQuality: { fontSize: 13, color: '#999999', fontStyle: 'italic', fontFamily: 'Nunito_400Regular' },
 
   // Delete button — tiny grey text, no button styling
   deleteBtn: {

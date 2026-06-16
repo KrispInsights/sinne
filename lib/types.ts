@@ -104,11 +104,13 @@ export interface Integration {
   updated_at: string;
 }
 
-export type MirrorPromptType = 'weekly' | 'monthly' | null;
+export type MirrorPromptType = 'weekly' | 'monthly' | 'journey' | null;
 
 export interface Mirror {
   id: string;
-  type: 'weekly' | 'monthly';
+  type: 'weekly' | 'monthly' | 'journey';
+  journey_id: string | null;      // null for weekly/monthly; journey id for journey mirrors
+  journey_name: string | null;    // null for weekly/monthly; journey name for display
   period_start: string;
   period_end: string;
   generated_at: string;
@@ -117,6 +119,13 @@ export interface Mirror {
   session_count: number;
   integration_count: number;
   status: 'ready' | 'generating' | 'error';
+}
+
+// Persisted flag for a pending journey Mirror offer the user has not yet acted on
+export interface JourneyMirrorOffer {
+  journey_id: string;
+  journey_name: string;
+  offered_at: string; // ISO timestamp of when the journey was closed
 }
 
 export interface Entitlement {

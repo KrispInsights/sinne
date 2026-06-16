@@ -10,9 +10,9 @@ import * as Clipboard from 'expo-clipboard';
 import {
   getMirrors, getSessions, getIntegrations, getProfile,
   shouldShowWeeklyMirror, shouldShowMonthlyMirror, saveMirror, uid,
-  getMirrorUnlockStatus,
+  getMirrorUnlockStatus, getPendingJourneyMirrorOffers, getJourneys,
 } from '@/lib/storage';
-import type { Mirror, MirrorPromptType, SessionWithCheckin } from '@/lib/types';
+import type { Mirror, MirrorPromptType, SessionWithCheckin, JourneyMirrorOffer } from '@/lib/types';
 import { COLORS, RADII, CARD_SHADOW, FONTS } from '@/lib/theme';
 
 function buildWeeklyResponse(goals: string[]): string {
@@ -27,6 +27,13 @@ function buildMonthlyResponse(goals: string[]): string {
     ? ` Based on your focus on ${goals[0].toLowerCase()}, this month's arc points toward a deepening capacity to stay with difficult states rather than move away from them.`
     : '';
   return `Across this month, your nervous system spent most of its time between activation and shutdown in weeks one and two, then shifted noticeably toward grounded in weeks three and four. Grief was the dominant charge in 11 of 18 sessions. Your integration notes were most active in the days following your longer sessions. The body regions that appeared most consistently were throat, chest, and solar plexus — often together. Something in the throat-chest-gut line seems to be the current edge of your work.${goalLine}`;
+}
+
+function buildJourneyResponse(journeyName: string, goals: string[]): string {
+  const goalLine = goals.length > 0
+    ? ` Something in this arc seems to be doing the slow work of ${goals[0].toLowerCase()}.`
+    : '';
+  return `${journeyName} held a thread across its full span, the early sessions carrying significant activation in the solar plexus and chest, grief recurring as the most consistent charge. By the midpoint something began to shift, not resolve, but move. The body started logging throat and arms alongside the earlier gut-and-chest pattern. The final sessions showed less shutdown and more movement between activation and settling. Whatever this journey was holding space for, it is still in motion.${goalLine} The container closes, the integration continues.`;
 }
 
 // ---- Helpers ----
@@ -57,6 +64,11 @@ function summarize(text: string): string {
 function formatDateRange(mirror: Mirror): string {
   const start = new Date(mirror.period_start + 'T00:00:00');
   const end = new Date(mirror.period_end + 'T00:00:00');
+  if (mirror.type === 'journey') {
+    const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startStr} – ${endStr}`;
+  }
   if (mirror.type === 'monthly') {
     return start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   }
@@ -87,9 +99,14 @@ function currentMonthLabel(): string {
 function compileExportText(mirrors: Mirror[]): string {
   const lines: string[] = ['SINNE — MY MIRRORS', ''];
   for (const m of mirrors) {
-    const label = m.type === 'monthly'
-      ? `MONTHLY MIRROR — ${formatDateRange(m)}`
-      : `WEEKLY MIRROR — ${formatDateRange(m)}`;
+    let label: string;
+    if (m.type === 'journey') {
+      label = `JOURNEY MIRROR — ${m.journey_name ?? 'Journey'} — ${formatDateRange(m)}`;
+    } else if (m.type === 'monthly') {
+      label = `MONTHLY MIRROR — ${formatDateRange(m)}`;
+    } else {
+      label = `WEEKLY MIRROR — ${formatDateRange(m)}`;
+    }
     lines.push(label);
     lines.push(m.content);
     lines.push('');
@@ -99,7 +116,7 @@ function compileExportText(mirrors: Mirror[]): string {
 
 // ---- Generation loading view ----
 
-function GenerationView({ type }: { type: MirrorPromptType }) {
+function GenerationView({ type, journeyName }: { type: MirrorPromptType; journeyName?: string }) {
   const pulse = useRef(new Animated.Value(0)).current;
   const barAnim = useRef(new Animated.Value(0)).current;
 
@@ -125,12 +142,18 @@ function GenerationView({ type }: { type: MirrorPromptType }) {
   const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] });
   const translateX = barAnim.interpolate({ inputRange: [0, 1], outputRange: [-120, 220] });
 
+  const label = type === 'monthly'
+    ? 'Reflecting on your month…'
+    : type === 'journey'
+    ? `Reflecting on ${journeyName ?? 'your journey'}…`
+    : 'Reflecting on your week…';
+
   return (
     <View style={s.genContainer}>
       <Animated.View style={{ transform: [{ scale }], opacity }}>
         <MaterialCommunityIcons name="eye-outline" size={56} color={COLORS.accent} />
       </Animated.View>
-      <Text style={s.genText}>{type === 'monthly' ? 'Reflecting on your month…' : 'Reflecting on your week…'}</Text>
+      <Text style={s.genText}>{label}</Text>
       <View style={s.genBarTrack}>
         <Animated.View style={[s.genBarFill, { transform: [{ translateX }] }]} />
       </View>
@@ -141,11 +164,19 @@ function GenerationView({ type }: { type: MirrorPromptType }) {
 // ---- Mirror card ----
 
 function MirrorCard({ mirror, onPress, onCopy }: { mirror: Mirror; onPress: () => void; onCopy: () => void }) {
+  const isJourney = mirror.type === 'journey';
+  const pillLabel = isJourney
+    ? `Journey · ${mirror.journey_name ?? ''}`
+    : mirror.type === 'weekly' ? 'Weekly' : 'Monthly';
+
+  const pillBg = isJourney ? '#F7F0E7' : '#B07FFF26';
+  const pillText = isJourney ? '#C49A6C' : COLORS.accent;
+
   return (
     <TouchableOpacity style={[s.mirrorCard, CARD_SHADOW]} onPress={onPress} activeOpacity={0.85}>
       <View style={s.cardTopRow}>
-        <View style={s.typePill}>
-          <Text style={s.typePillText}>{mirror.type === 'weekly' ? 'Weekly' : 'Monthly'}</Text>
+        <View style={[s.typePill, { backgroundColor: pillBg }]}>
+          <Text style={[s.typePillText, { color: pillText }]}>{pillLabel}</Text>
         </View>
         <TouchableOpacity onPress={onCopy} hitSlop={8} activeOpacity={0.6}>
           <MaterialCommunityIcons name="content-copy" size={24} color={COLORS.textTertiary} />
@@ -161,21 +192,27 @@ function MirrorCard({ mirror, onPress, onCopy }: { mirror: Mirror; onPress: () =
 
 export default function MirrorScreen() {
   const router = useRouter();
-  const { autogenerate } = useLocalSearchParams<{ autogenerate?: string }>();
+  const { autogenerate, journeyMirrorId, journeyMirrorName } = useLocalSearchParams<{
+    autogenerate?: string;
+    journeyMirrorId?: string;
+    journeyMirrorName?: string;
+  }>();
   const [mirrors, setMirrors] = useState<Mirror[]>([]);
   const [promptType, setPromptType] = useState<MirrorPromptType>(null);
   const [generating, setGenerating] = useState<MirrorPromptType>(null);
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [unlockStatus, setUnlockStatus] = useState({ unlocked: true, daysSinceSignup: 0, totalSessions: 0, sessionsNeeded: 0 });
+  const [pendingJourneyOffer, setPendingJourneyOffer] = useState<JourneyMirrorOffer | null>(null);
   const toastAnim = useRef(new Animated.Value(0)).current;
 
   const load = useCallback(async () => {
-    const [m, weekly, monthly, status] = await Promise.all([
-      getMirrors(), shouldShowWeeklyMirror(), shouldShowMonthlyMirror(), getMirrorUnlockStatus(),
+    const [m, weekly, monthly, status, pendingOffers] = await Promise.all([
+      getMirrors(), shouldShowWeeklyMirror(), shouldShowMonthlyMirror(), getMirrorUnlockStatus(), getPendingJourneyMirrorOffers(),
     ]);
     setMirrors(m);
     setPromptType(monthly ? 'monthly' : weekly ? 'weekly' : null);
     setUnlockStatus(status);
+    setPendingJourneyOffer(pendingOffers[0] ?? null);
   }, []);
 
   useFocusEffect(useCallback(() => {
@@ -190,6 +227,15 @@ export default function MirrorScreen() {
       handleGenerate(autogenerate);
     }
   }, [autogenerate]);
+
+  useEffect(() => {
+    if (!journeyMirrorId) return;
+    const existing = mirrors.find((m) => m.type === 'journey' && m.journey_id === journeyMirrorId);
+    if (!existing) {
+      router.setParams({ journeyMirrorId: undefined, journeyMirrorName: undefined } as any);
+      handleGenerateJourneyMirror(journeyMirrorId, journeyMirrorName ?? '');
+    }
+  }, [journeyMirrorId, mirrors]);
 
   async function handleGenerate(type: 'weekly' | 'monthly') {
     setGenerating(type);
@@ -214,6 +260,8 @@ export default function MirrorScreen() {
     const generatingMirror: Mirror = {
       id,
       type,
+      journey_id: null,
+      journey_name: null,
       period_start: periodStart,
       period_end: periodEnd,
       generated_at: new Date().toISOString(),
@@ -242,6 +290,48 @@ export default function MirrorScreen() {
     }, 2000);
   }
 
+  async function handleGenerateJourneyMirror(journeyId: string, journeyName: string) {
+    setGenerating('journey');
+    try {
+      const [profile, allSessions, allIntegrations, journeys] = await Promise.all([
+        getProfile(), getSessions(), getIntegrations(), getJourneys(),
+      ]);
+      const goals = profile.goals ?? [];
+
+      const journeySessions = allSessions.filter((s) => s.session.journey_id === journeyId);
+      const journeyIntegrations = allIntegrations.filter((i) => i.journey_id === journeyId);
+
+      const content = buildJourneyResponse(journeyName, goals);
+
+      const journey = journeys.find((j) => j.id === journeyId);
+      const today = new Date();
+      const todayStr = isoDate(today);
+      const periodStart = journey?.start_date ?? todayStr;
+      const periodEnd = journey?.closed_at ? journey.closed_at.split('T')[0] : todayStr;
+
+      const mirror: Mirror = {
+        id: uid(),
+        type: 'journey',
+        journey_id: journeyId,
+        journey_name: journeyName,
+        period_start: periodStart,
+        period_end: periodEnd,
+        generated_at: new Date().toISOString(),
+        content,
+        summary: summarize(content),
+        session_count: journeySessions.length,
+        integration_count: journeyIntegrations.length,
+        status: 'ready',
+      };
+
+      await saveMirror(mirror);
+      await load();
+      router.push({ pathname: '/mirror/[id]', params: { id: mirror.id } } as any);
+    } finally {
+      setGenerating(null);
+    }
+  }
+
   async function handleExportAll() {
     const text = compileExportText(mirrors);
     await Clipboard.setStringAsync(text);
@@ -257,7 +347,7 @@ export default function MirrorScreen() {
   if (generating) {
     return (
       <SafeAreaView edges={['top']} style={s.safe}>
-        <GenerationView type={generating} />
+        <GenerationView type={generating} journeyName={pendingJourneyOffer?.journey_name ?? journeyMirrorName} />
       </SafeAreaView>
     );
   }
@@ -331,6 +421,23 @@ export default function MirrorScreen() {
                   <Text style={s.bannerBtnText}>View</Text>
                 </TouchableOpacity>
               </ExpoLinearGradient>
+            )}
+
+            {pendingJourneyOffer && !generating && (
+              <TouchableOpacity
+                style={[s.journeyOfferCard, CARD_SHADOW]}
+                onPress={() => handleGenerateJourneyMirror(pendingJourneyOffer.journey_id, pendingJourneyOffer.journey_name)}
+                activeOpacity={0.85}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <MaterialCommunityIcons name="eye-outline" size={20} color={COLORS.accent} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.journeyOfferTitle}>{pendingJourneyOffer.journey_name} is complete.</Text>
+                    <Text style={s.journeyOfferSubtitle}>Tap to reflect on this journey</Text>
+                  </View>
+                  <Text style={s.journeyOfferReflect}>Reflect →</Text>
+                </View>
+              </TouchableOpacity>
             )}
 
             {mirrors.length > 0 && (
@@ -427,6 +534,19 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   bannerBtnText: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: COLORS.accent },
+
+  journeyOfferCard: {
+    backgroundColor: COLORS.card, borderRadius: RADII.card, padding: 20,
+  },
+  journeyOfferTitle: {
+    fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: COLORS.text, marginBottom: 2,
+  },
+  journeyOfferSubtitle: {
+    fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: COLORS.textTertiary,
+  },
+  journeyOfferReflect: {
+    fontFamily: 'Nunito_500Medium', fontSize: 13, fontWeight: '500', color: COLORS.accent,
+  },
 
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,

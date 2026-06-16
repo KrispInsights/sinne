@@ -4,8 +4,9 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { getJourneys, getSessions, closeJourney, reopenJourney, deleteJourney } from '@/lib/storage';
-import type { Journey, SessionWithCheckin } from '@/lib/types';
+import { getJourneys, getSessions, closeJourney, reopenJourney, deleteJourney, getJourneyMirror } from '@/lib/storage';
+import type { Journey, SessionWithCheckin, Mirror } from '@/lib/types';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, FONTS, CARD_SHADOW, OPTION_TEXT } from '@/lib/theme';
 
 const STATE_COLORS: Record<string, string> = {
@@ -35,22 +36,24 @@ export default function JourneyDetailScreen() {
   const { bottom: safeBottom } = useSafeAreaInsets();
   const [journey, setJourney] = useState<Journey | null>(null);
   const [journeySessions, setJourneySessions] = useState<SessionWithCheckin[]>([]);
+  const [journeyMirror, setJourneyMirror] = useState<Mirror | null>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showReopenModal, setShowReopenModal] = useState(false);
-  const [showClosedMessage, setShowClosedMessage] = useState(false);
+  const [showMirrorOffer, setShowMirrorOffer] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       (async () => {
-        const [journeys, allSessions] = await Promise.all([
-          getJourneys(), getSessions(),
+        const [journeys, allSessions, mirror] = await Promise.all([
+          getJourneys(), getSessions(), getJourneyMirror(id),
         ]);
         if (cancelled) return;
         const j = journeys.find((j) => j.id === id) ?? null;
         setJourney(j);
         setJourneySessions(allSessions.filter((s) => s.session.journey_id === id));
+        setJourneyMirror(mirror);
       })();
       return () => { cancelled = true; };
     }, [id])
@@ -60,8 +63,12 @@ export default function JourneyDetailScreen() {
     await closeJourney(id);
     setShowCloseModal(false);
     const journeys = await getJourneys();
-    setJourney(journeys.find((j) => j.id === id) ?? null);
-    setShowClosedMessage(true);
+    const updatedJourney = journeys.find((j) => j.id === id) ?? null;
+    setJourney(updatedJourney);
+    // Check if this journey has sessions - if so, show Mirror offer
+    if (journeySessions.length >= 1) {
+      setShowMirrorOffer(true);
+    }
   }
 
   async function handleReopen() {
@@ -147,6 +154,33 @@ export default function JourneyDetailScreen() {
               ))}
             </View>
           </View>
+        )}
+
+        {/* Your Mirror section — only shown for closed journeys with a Mirror */}
+        {journey.status === 'closed' && journeyMirror && (
+          <TouchableOpacity
+            style={s.yourMirrorCard}
+            onPress={() => router.push({ pathname: '/mirror/[id]', params: { id: journeyMirror.id } } as any)}
+            activeOpacity={0.85}
+          >
+            <View style={s.mirrorIconRow}>
+              <MaterialCommunityIcons name="mirror" size={20} color="#C49A6C" />
+              <Text style={s.yourMirrorLabel}>YOUR MIRROR</Text>
+            </View>
+            <Text style={s.yourMirrorTitle}>{journey.name}</Text>
+            <Text style={s.yourMirrorSummary}>{journeyMirror.summary}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* See your Mirror button — only shown for closed journeys without a Mirror */}
+        {journey.status === 'closed' && !journeyMirror && (
+          <TouchableOpacity
+            style={s.seeYourMirrorBtn}
+            onPress={() => router.push({ pathname: '/mirror', params: { journeyMirrorId: journey.id, journeyMirrorName: journey.name } } as any)}
+            activeOpacity={0.85}
+          >
+            <Text style={s.seeYourMirrorText}>See your Mirror</Text>
+          </TouchableOpacity>
         )}
 
         {/* New Session button — only shown for active journeys */}
@@ -241,14 +275,28 @@ export default function JourneyDetailScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* Ended confirmation */}
-      <Modal transparent visible={showClosedMessage} animationType="fade" onRequestClose={() => setShowClosedMessage(false)}>
-        <TouchableOpacity style={s.backdrop} onPress={() => setShowClosedMessage(false)} activeOpacity={1}>
+      {/* Journey Mirror offer modal */}
+      <Modal transparent visible={showMirrorOffer} animationType="fade" onRequestClose={() => setShowMirrorOffer(false)}>
+        <TouchableOpacity style={s.backdrop} onPress={() => setShowMirrorOffer(false)} activeOpacity={1}>
           <View style={[s.modalCard, { marginBottom: Math.max(safeBottom + 20, 40) }]}>
             <Text style={s.modalTitle}>Your journey is now ended.</Text>
-            <Text style={s.modalBody}>It will be included in your next Mirror.</Text>
-            <TouchableOpacity style={s.modalPrimaryBtn} onPress={() => setShowClosedMessage(false)} activeOpacity={0.85}>
-              <Text style={s.modalPrimaryText}>OK</Text>
+            <Text style={s.modalBody}>
+              You logged {journeySessions.length} session{journeySessions.length !== 1 ? 's' : ''} during "{journey?.name}".
+              {'\n\n'}
+              Would you like to see your reflection—a personalized Mirror that weaves together your inner world across the full arc of your journey?
+            </Text>
+            <TouchableOpacity
+              style={s.modalPrimaryBtn}
+              onPress={() => {
+                setShowMirrorOffer(false);
+                router.push({ pathname: '/mirror', params: { journeyMirrorId: id, journeyMirrorName: journey?.name } } as any);
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={s.modalPrimaryText}>Reflect</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowMirrorOffer(false)} activeOpacity={0.7}>
+              <Text style={s.modalCancelText}>Not now</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -315,6 +363,31 @@ const s = StyleSheet.create({
     backgroundColor: '#F0F0F0',
   },
   intentionChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: '#666666' },
+
+  // Your Mirror card
+  yourMirrorCard: {
+    backgroundColor: '#F7F0E7',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 12,
+    ...CARD_SHADOW,
+  },
+  mirrorIconRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  yourMirrorLabel: {
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#C49A6C',
+    textTransform: 'uppercase', letterSpacing: 1.2,
+  },
+  yourMirrorTitle: {
+    fontFamily: 'DMSerifDisplay_400Regular', fontSize: 18, fontWeight: '400', color: '#1A1A1A', marginBottom: 8,
+  },
+  yourMirrorSummary: { fontFamily: 'Nunito_400Regular', fontSize: 14, fontWeight: '400', color: '#666666', lineHeight: 20 },
+
+  // See your Mirror button
+  seeYourMirrorBtn: {
+    backgroundColor: '#F7F0E7', borderRadius: 12, height: 50,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+  },
+  seeYourMirrorText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#C49A6C' },
 
   emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 15, color: '#999999' },

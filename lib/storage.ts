@@ -7,6 +7,7 @@ import type {
   Journey,
   Integration,
   Mirror,
+  JourneyMirrorOffer,
   Entitlement,
   CreateSessionInput,
   UpdateSessionInput,
@@ -36,6 +37,7 @@ const KEYS = {
   journeys: 'sinne_journeys',
   integrations: 'sinne_integrations',
   mirrors: 'sinne_mirrors',
+  journeyMirrorOffers: 'sinne_journey_mirror_offers',
   entitlement: 'sinne_entitlement',
   signedIn: 'sinne_signed_in',
 } as const;
@@ -44,6 +46,7 @@ let _seeded = false;
 
 async function seedIfNeeded(): Promise<void> {
   if (_seeded) return;
+    await AsyncStorage.removeItem(KEYS.initialized); // TEMP — remove after reseedning to reset data during development
   const flag = await AsyncStorage.getItem(KEYS.initialized);
   if (!flag) {
     await AsyncStorage.multiSet([
@@ -340,8 +343,23 @@ export async function closeJourney(id: string): Promise<Journey> {
   const journeys = await load<Journey>(KEYS.journeys);
   const i = journeys.findIndex((j) => j.id === id);
   if (i === -1) throw new Error(`Journey not found: ${id}`);
+
+  // Check session count — only offer Mirror if >= 1 session logged for this journey
+  const sessions = await load<Session>(KEYS.sessions);
+  const journeySessions = sessions.filter((s) => s.journey_id === id);
+
   journeys[i] = { ...journeys[i], status: 'closed', closed_at: now() };
   await save(KEYS.journeys, journeys);
+
+  // Save a Journey Mirror offer if there is at least 1 session
+  if (journeySessions.length >= 1) {
+    await saveJourneyMirrorOffer({
+      journey_id: id,
+      journey_name: journeys[i].name,
+      offered_at: now(),
+    });
+  }
+
   return journeys[i];
 }
 
@@ -556,6 +574,36 @@ export async function getMirrorPromptType(): Promise<'weekly' | 'monthly' | null
   if (await shouldShowMonthlyMirror()) return 'monthly';
   if (await shouldShowWeeklyMirror()) return 'weekly';
   return null;
+}
+
+// ---- Journey Mirror offers ----
+
+// Save a pending Journey Mirror offer (called when a journey is closed)
+export async function saveJourneyMirrorOffer(offer: JourneyMirrorOffer): Promise<void> {
+  const offers = await load<JourneyMirrorOffer>(KEYS.journeyMirrorOffers);
+  // Only add if not already present for this journey
+  if (!offers.find((o) => o.journey_id === offer.journey_id)) {
+    await save(KEYS.journeyMirrorOffers, [...offers, offer]);
+  }
+}
+
+// Get all pending Journey Mirror offers (journeys closed but no Mirror generated yet)
+export async function getPendingJourneyMirrorOffers(): Promise<JourneyMirrorOffer[]> {
+  const [offers, mirrors] = await Promise.all([
+    load<JourneyMirrorOffer>(KEYS.journeyMirrorOffers),
+    load<Mirror>(KEYS.mirrors),
+  ]);
+  // Filter out any offers where a journey Mirror already exists for that journey_id
+  const generatedJourneyIds = new Set(
+    mirrors.filter((m) => m.type === 'journey' && m.journey_id).map((m) => m.journey_id!)
+  );
+  return offers.filter((o) => !generatedJourneyIds.has(o.journey_id));
+}
+
+// Get the Journey Mirror for a specific journey_id (null if not yet generated)
+export async function getJourneyMirror(journeyId: string): Promise<Mirror | null> {
+  const mirrors = await getMirrors();
+  return mirrors.find((m) => m.type === 'journey' && m.journey_id === journeyId) ?? null;
 }
 
 // ---- Entitlement ----

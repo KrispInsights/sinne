@@ -6,8 +6,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getJourneys, getSessions, getIntegrations } from '@/lib/storage';
-import type { Journey, Integration } from '@/lib/types';
+import { getJourneys, getSessions, getIntegrations, getPendingJourneyMirrorOffers } from '@/lib/storage';
+import type { Journey, Integration, JourneyMirrorOffer } from '@/lib/types';
 import { COLORS, RADII, CARD_SHADOW, FONTS } from '@/lib/theme';
 
 // Muted accent colours cycled across journey cards (throat, heart, sacral, third eye, root, solar)
@@ -101,12 +101,15 @@ export default function JourneysScreen() {
   const [journeyEntries, setJourneyEntries] = useState<Record<string, Array<{ type: 'session' | 'integration'; practiceType?: string; date: string }>>>({});
   const [sheetOpen, setSheetOpen] = useState(false);
   const [showEndedJourneys, setShowEndedJourneys] = useState(false);
+  const [pendingJourneyOffer, setPendingJourneyOffer] = useState<JourneyMirrorOffer | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       (async () => {
-        const [js, sessions, integrations] = await Promise.all([getJourneys(), getSessions(), getIntegrations()]);
+        const [js, sessions, integrations, pendingOffers] = await Promise.all([
+          getJourneys(), getSessions(), getIntegrations(), getPendingJourneyMirrorOffers(),
+        ]);
         if (cancelled) return;
 
         const counts: Record<string, number> = {};
@@ -142,6 +145,7 @@ export default function JourneysScreen() {
         setSessionCounts(counts);
         setPracticeTypes(types);
         setJourneyEntries(entries);
+        setPendingJourneyOffer(pendingOffers[0] ?? null);
       })();
       return () => { cancelled = true; };
     }, [])
@@ -253,6 +257,23 @@ export default function JourneysScreen() {
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        {pendingJourneyOffer && (
+          <TouchableOpacity
+            style={[s.mirrorOfferBanner, CARD_SHADOW]}
+            onPress={() => router.push({ pathname: '/mirror', params: { journeyMirrorId: pendingJourneyOffer.journey_id, journeyMirrorName: pendingJourneyOffer.journey_name } } as any)}
+            activeOpacity={0.85}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <MaterialCommunityIcons name="eye-outline" size={20} color={COLORS.accent} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.mirrorOfferTitle}>{pendingJourneyOffer.journey_name} is complete.</Text>
+                <Text style={s.mirrorOfferSubtitle}>Tap to reflect on this journey</Text>
+              </View>
+              <Text style={s.mirrorOfferReflect}>Reflect →</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {journeys.length === 0 ? (
           <View style={s.emptyCenter}>
             <Text style={s.emptyText}>Your journeys will appear here.</Text>
@@ -344,6 +365,19 @@ const s = StyleSheet.create({
   title: { fontSize: 32, fontFamily: FONTS.display, color: COLORS.text },
   subtitle: { fontSize: 14, fontWeight: '400', color: COLORS.textTertiary, marginTop: 4 },
   content: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 120, gap: 20 },
+
+  mirrorOfferBanner: {
+    backgroundColor: COLORS.card, borderRadius: RADII.card, padding: 20, marginBottom: 4,
+  },
+  mirrorOfferTitle: {
+    fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: COLORS.text, marginBottom: 2,
+  },
+  mirrorOfferSubtitle: {
+    fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: COLORS.textTertiary,
+  },
+  mirrorOfferReflect: {
+    fontFamily: 'Nunito_500Medium', fontSize: 13, fontWeight: '500', color: COLORS.accent,
+  },
 
   sectionLabel: {
     fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,

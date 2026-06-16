@@ -5,30 +5,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { getIntegrations } from '@/lib/storage';
 import type { Integration } from '@/lib/types';
 import { BottomSheet } from '@/components/BottomSheet';
-import { COLORS, OPTION_TEXT } from '@/lib/theme';
+import { COLORS, OPTION_TEXT, CATEGORY_DATA } from '@/lib/theme';
 
 // ---- Category metadata ----
 
-type CategoryKey = 'Actions' | 'Body' | 'Emotions' | 'Gratitude' | 'Meaning' | 'Memories' | 'Patterns' | 'Realizations' | 'Triggers';
-
-const CATEGORY_DATA: Record<CategoryKey, {
-  icon: string; color: string; tint: string; desc: string;
-}> = {
-  Actions:      { icon: 'lightning-bolt-outline',  color: '#C49A6C', tint: '#F9F5F0', desc: 'What will you do differently?' },
-  Body:         { icon: 'human',                   color: '#7AAE8A', tint: '#F2F7F3', desc: 'Physical sensations and signals' },
-  Emotions:     { icon: 'heart-outline',           color: '#6E9BB5', tint: '#F1F5F8', desc: "What's still moving?" },
-  Gratitude:    { icon: 'hand-heart-outline',      color: '#C9B96A', tint: '#FAF8F0', desc: 'What you want to acknowledge' },
-  Meaning:      { icon: 'lightbulb-outline',       color: '#9B7FBF', tint: '#F5F2F9', desc: 'Deeper significance' },
-  Memories:     { icon: 'image-outline',           color: '#7A8B8B', tint: '#F0F3F3', desc: 'Surfacing images and moments' },
-  Patterns:     { icon: 'repeat-variant',          color: '#8B6347', tint: '#F3EDE8', desc: 'Familiar dynamics noticed' },
-  Realizations: { icon: 'star-outline',            color: '#7E6B9E', tint: '#F2F0F5', desc: 'What became clearer' },
-  Triggers:     { icon: 'alert-circle-outline',    color: '#B5736A', tint: '#F8F1F0', desc: 'What set something off' },
-};
-
-const CATEGORIES = Object.keys(CATEGORY_DATA) as CategoryKey[];
+const CATEGORIES = Object.keys(CATEGORY_DATA) as Array<keyof typeof CATEGORY_DATA>;
 
 // ---- Helpers ----
 
@@ -64,7 +49,7 @@ function groupByDate(integrations: Integration[]): { date: string; items: Integr
 }
 
 function getCatData(category: string) {
-  const key = (category.charAt(0).toUpperCase() + category.slice(1).toLowerCase()) as CategoryKey;
+  const key = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
   return CATEGORY_DATA[key] ?? { color: '#9B7FBF', tint: '#F5F2F9', icon: 'circle-outline', desc: '' };
 }
 
@@ -131,6 +116,18 @@ export default function IntegrationScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={s.safe}>
+      <LinearGradient
+        colors={['rgba(176, 127, 255, 0.18)', 'transparent']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0,
+          height: 200,
+          zIndex: 0,
+        }}
+        pointerEvents="none"
+      />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={s.content}

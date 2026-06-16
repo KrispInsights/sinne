@@ -287,7 +287,7 @@ export const mockMirrors: Mirror[] = [
     period_end: '2026-06-06',
     generated_at: '2026-06-07T20:00:00.000Z',
     content:
-      'Across this period, the nervous system spent most of its time moving between activation and shutdown in the first two weeks, then settled more often in the second half. Grief was the dominant charge, appearing in just over half of all sessions, most often alongside throat and chest activation. Integration notes clustered in the days following longer sessions, frequently circling back to the same family memory. By the final week, body sensations had shifted from heaviness in the chest to warmth and openness in the same region — a notable change from where the month began.',
+      'Across this period, the nervous system spent most of its time moving between activation and shutdown in the first two weeks, then grounded more often in the second half. Grief was the dominant charge, appearing in just over half of all sessions, most often alongside throat and chest activation. Integration notes clustered in the days following longer sessions, frequently circling back to the same family memory. By the final week, body sensations had shifted from heaviness in the chest to warmth and openness in the same region — a notable change from where the month began.',
     summary: 'Grief was the dominant charge, most often alongside throat and chest activation.',
     session_count: 14,
     integration_count: 9,
@@ -300,7 +300,7 @@ export const mockMirrors: Mirror[] = [
     period_end: '2026-06-14',
     generated_at: '2026-06-14T20:00:00.000Z',
     content:
-      'This week, grief appeared in three of five sessions, most often alongside throat activation and a shutdown nervous system state. Integration notes from Tuesday and Thursday both circled back to the same memory of a parent. By Sunday something shifted — the state moved to settled and the body sensations moved from chest heaviness to warmth. The pattern across the week suggests something completing rather than repeating.',
+      'This week, grief appeared in three of five sessions, most often alongside throat activation and a shutdown nervous system state. Integration notes from Tuesday and Thursday both circled back to the same memory of a parent. By Sunday something shifted — the state moved to grounded and the body sensations moved from chest heaviness to warmth. The pattern across the week suggests something completing rather than repeating.',
     summary: 'Grief appeared in three of five sessions, most often alongside throat activation.',
     session_count: 5,
     integration_count: 4,

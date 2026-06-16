@@ -9,7 +9,7 @@ import type { Journey, SessionWithCheckin } from '@/lib/types';
 import { COLORS, FONTS, CARD_SHADOW, OPTION_TEXT } from '@/lib/theme';
 
 const STATE_COLORS: Record<string, string> = {
-  settled: '#7AAE8A',
+  grounded: '#7AAE8A',
   activated: '#C9B96A',
   shutdown: '#7E6B9E',
 };

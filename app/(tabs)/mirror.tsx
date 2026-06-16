@@ -19,14 +19,14 @@ function buildWeeklyResponse(goals: string[]): string {
   const goalLine = goals.length > 0
     ? ` Based on your focus on ${goals[0].toLowerCase()}, this week's patterns suggest the nervous system is doing the groundwork before settling becomes possible.`
     : '';
-  return `Grief appeared in three of your five sessions this week, most often alongside throat activation and a shutdown nervous system state. Your integration notes from Tuesday and Thursday both circled back to the same memory. By Friday something shifted — your state moved to settled and the body sensations moved from chest heaviness to warmth. The pattern across this week suggests something is completing rather than repeating.${goalLine}`;
+  return `Grief appeared in three of your five sessions this week, most often alongside throat activation and a shutdown nervous system state. Your integration notes from Tuesday and Thursday both circled back to the same memory. By Friday something shifted — your state moved to grounded and the body sensations moved from chest heaviness to warmth. The pattern across this week suggests something is completing rather than repeating.${goalLine}`;
 }
 
 function buildMonthlyResponse(goals: string[]): string {
   const goalLine = goals.length > 0
     ? ` Based on your focus on ${goals[0].toLowerCase()}, this month's arc points toward a deepening capacity to stay with difficult states rather than move away from them.`
     : '';
-  return `Across this month, your nervous system spent most of its time between activation and shutdown in weeks one and two, then shifted noticeably toward settled in weeks three and four. Grief was the dominant charge in 11 of 18 sessions. Your integration notes were most active in the days following your longer sessions. The body regions that appeared most consistently were throat, chest, and solar plexus — often together. Something in the throat-chest-gut line seems to be the current edge of your work.${goalLine}`;
+  return `Across this month, your nervous system spent most of its time between activation and shutdown in weeks one and two, then shifted noticeably toward grounded in weeks three and four. Grief was the dominant charge in 11 of 18 sessions. Your integration notes were most active in the days following your longer sessions. The body regions that appeared most consistently were throat, chest, and solar plexus — often together. Something in the throat-chest-gut line seems to be the current edge of your work.${goalLine}`;
 }
 
 // ---- Helpers ----
@@ -264,6 +264,18 @@ export default function MirrorScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={s.safe}>
+      <ExpoLinearGradient
+        colors={['rgba(176, 127, 255, 0.18)', 'transparent']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0,
+          height: 200,
+          zIndex: 0,
+        }}
+        pointerEvents="none"
+      />
       <View style={s.header}>
         <View>
           <Text style={s.title}>Mirror</Text>

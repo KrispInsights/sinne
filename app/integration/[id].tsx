@@ -6,20 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { getIntegrations, deleteIntegration } from '@/lib/storage';
 import type { Integration } from '@/lib/types';
-import { COLORS, FONTS, CARD_SHADOW } from '@/lib/theme';
-
-// Category colors (matching integration-entry.tsx)
-const CATEGORY_COLOR: Record<string, string> = {
-  Actions:      '#C49A6C',
-  Body:         '#7AAE8A',
-  Emotions:     '#6E9BB5',
-  Gratitude:    '#C9B96A',
-  Meaning:      '#9B7FBF',
-  Memories:     '#7A8B8B',
-  Patterns:     '#8B6347',
-  Realizations: '#7E6B9E',
-  Triggers:     '#B5736A',
-};
+import { COLORS, FONTS, CARD_SHADOW, CATEGORY_DATA } from '@/lib/theme';
 
 // Category questions (matching integration-entry.tsx)
 const CATEGORY_QUESTIONS: Record<string, [string, string, string]> = {
@@ -125,7 +112,7 @@ export default function IntegrationDetailScreen() {
 
   const cat = integration.category.toLowerCase();
   const displayName = integration.category.charAt(0).toUpperCase() + integration.category.slice(1).toLowerCase();
-  const accentColor = CATEGORY_COLOR[displayName] ?? COLORS.accent;
+  const accentColor = CATEGORY_DATA[displayName]?.color ?? COLORS.accent;
 
   // Get questions for this category
   const questions = CATEGORY_QUESTIONS[displayName] ?? CATEGORY_QUESTIONS.Emotions;

@@ -57,14 +57,14 @@ const GOALS = [
 ];
 
 const VOCAB_OPTIONS = [
-  { id: 'plain' as const, label: 'Neutral / plain language', states: ['Settled','Activated','Shutdown'] },
+  { id: 'plain' as const, label: 'Neutral / plain language', states: ['grounded','Activated','Shutdown'] },
   { id: 'polyvagal' as const, label: 'Polyvagal', states: ['Ventral','Sympathetic','Dorsal'] },
   { id: 'ifs' as const, label: 'IFS / Internal Family Systems', states: ['Self','Activated part','Blended'] },
-  { id: 'somatic' as const, label: 'Somatic', states: ['Settled','Activated','Shutdown'] },
+  { id: 'somatic' as const, label: 'Somatic', states: ['grounded','Activated','Shutdown'] },
 ];
 
 const NS_COLORS = {
-  settled: { bg: '#EAF5EF', text: '#2a6645', border: '#a8d5bc' },
+  grounded: { bg: '#EAF5EF', text: '#2a6645', border: '#a8d5bc' },
   activated: { bg: '#FEF3EA', text: '#7a4020', border: '#f2c49a' },
   shutdown: { bg: '#EEEAF8', text: '#3d3565', border: '#c0b8e0' },
 };
@@ -392,7 +392,7 @@ export default function OnboardingScreen() {
               <Text style={[s.label, { marginTop: 24 }]}>PREVIEW</Text>
               <View style={s.previewRow}>
                 {[
-                  { key: 'settled', label: vocabOption.states[0] },
+                  { key: 'grounded', label: vocabOption.states[0] },
                   { key: 'activated', label: vocabOption.states[1] },
                   { key: 'shutdown', label: vocabOption.states[2] },
                 ].map(({ key, label }) => {

@@ -5,25 +5,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { OPTION_TEXT } from '@/lib/theme';
+import { OPTION_TEXT, CATEGORY_DATA } from '@/lib/theme';
 
-type CategoryKey = 'Actions' | 'Body' | 'Emotions' | 'Gratitude' | 'Meaning' | 'Memories' | 'Patterns' | 'Realizations' | 'Triggers';
-
-const CATEGORY_DATA: Record<CategoryKey, {
-  icon: string; color: string; tint: string; desc: string;
-}> = {
-  Actions:      { icon: 'lightning-bolt-outline',  color: '#C49A6C', tint: '#F9F5F0', desc: 'What will you do differently?' },
-  Body:         { icon: 'human',                   color: '#7AAE8A', tint: '#F2F7F3', desc: 'Physical sensations and signals' },
-  Emotions:     { icon: 'heart-outline',           color: '#6E9BB5', tint: '#F1F5F8', desc: "What's still moving?" },
-  Gratitude:    { icon: 'hand-heart-outline',      color: '#C9B96A', tint: '#FAF8F0', desc: 'What you want to acknowledge' },
-  Meaning:      { icon: 'lightbulb-outline',       color: '#9B7FBF', tint: '#F5F2F9', desc: 'Deeper significance' },
-  Memories:     { icon: 'image-outline',           color: '#7A8B8B', tint: '#F0F3F3', desc: 'Surfacing images and moments' },
-  Patterns:     { icon: 'repeat-variant',          color: '#8B6347', tint: '#F3EDE8', desc: 'Familiar dynamics noticed' },
-  Realizations: { icon: 'star-outline',            color: '#7E6B9E', tint: '#F2F0F5', desc: 'What became clearer' },
-  Triggers:     { icon: 'alert-circle-outline',    color: '#B5736A', tint: '#F8F1F0', desc: 'What set something off' },
-};
-
-const CATEGORIES = Object.keys(CATEGORY_DATA) as CategoryKey[];
+const CATEGORIES = Object.keys(CATEGORY_DATA) as Array<keyof typeof CATEGORY_DATA>;
 
 export default function NewIntegrationScreen() {
   const router = useRouter();

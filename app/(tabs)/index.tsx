@@ -6,14 +6,15 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import Svg, { Circle, Path, Rect, Defs, LinearGradient as SvgLinearGradient, Stop, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Path, Rect, Defs, LinearGradient as SvgLinearGradient, Stop, Text as SvgText, Line } from 'react-native-svg';
+import { Canvas, Circle as SkiaCircle, BlurMask } from '@shopify/react-native-skia';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSessions, getActiveJourneys, getJourneys, getProfile, getIntegrations, closeJourney, updateJourney, getMirrors } from '@/lib/storage';
 import { consumeSessionSaved } from '@/lib/events';
 import type { SessionWithCheckin, Journey, Profile, Integration, Mirror } from '@/lib/types';
 import { BodyFigureEllipses, REGION_CHAKRA_COLORS } from '@/components/BodyFigure';
-import { COLORS, OPTION_TEXT } from '@/lib/theme';
+import { COLORS, OPTION_TEXT, getRegionColor, getEmotionColor } from '@/lib/theme';
 
 const IS_DEV = process.env.EXPO_PUBLIC_DEV_MODE === 'true';
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -29,7 +30,7 @@ const CARD_SHADOW = {
 // ---- Constants ----
 
 const STATE_COLORS: Record<string, string> = {
-  settled: '#7AAE8A',
+  grounded: '#7AAE8A',
   activated: '#C9B96A',
   shutdown: '#7E6B9E',
 };
@@ -37,7 +38,7 @@ const STATE_COLORS: Record<string, string> = {
 // Muted polyvagal "wellness tone" palette — used only for the arc chart bands,
 // the breakdown nervous-system bars, and the session list state dots.
 const WELLNESS_TONES: Record<string, string> = {
-  settled: '#8FAE9A',   // Ventral — Sage Green
+  grounded: '#8FAE9A',   // Ventral — Sage Green
   activated: '#D6C2A1', // Sympathetic — Warm Sand
   shutdown: '#A89ABF',  // Dorsal — Dusty Lavender
 };
@@ -47,13 +48,13 @@ const ACTIVATED_LABEL = '#B8A080';
 function getWellnessChipColors(state?: string | null): { bg: string; text: string } {
   if (state === 'activated') return { bg: WELLNESS_TONES.activated + '26', text: ACTIVATED_LABEL };
   if (state === 'shutdown') return { bg: WELLNESS_TONES.shutdown + '26', text: WELLNESS_TONES.shutdown };
-  return { bg: WELLNESS_TONES.settled + '26', text: WELLNESS_TONES.settled };
+  return { bg: WELLNESS_TONES.grounded + '26', text: WELLNESS_TONES.grounded };
 }
 
 function getWellnessDotColor(state?: string | null): string {
   if (state === 'activated') return WELLNESS_TONES.activated;
   if (state === 'shutdown') return WELLNESS_TONES.shutdown;
-  if (state === 'settled') return WELLNESS_TONES.settled;
+  if (state === 'grounded') return WELLNESS_TONES.grounded;
   return '#CCCCCC';
 }
 
@@ -76,10 +77,10 @@ const SOMA_FILTERS: Array<{ key: SomaFilter; label: string }> = [
 ];
 
 const VOCAB_NAMES: Record<string, Record<string, string>> = {
-  plain:     { settled: 'Grounded',   activated: 'Activated',      shutdown: 'Shutdown' },
-  polyvagal: { settled: 'Ventral',   activated: 'Sympathetic',    shutdown: 'Dorsal' },
-  ifs:       { settled: 'Self',      activated: 'Activated part', shutdown: 'Blended' },
-  somatic:   { settled: 'Grounded',   activated: 'Activated',      shutdown: 'Shutdown' },
+  plain:     { grounded: 'Grounded',   activated: 'Activated',      shutdown: 'Shutdown' },
+  polyvagal: { grounded: 'Ventral',   activated: 'Sympathetic',    shutdown: 'Dorsal' },
+  ifs:       { grounded: 'Self',      activated: 'Activated part', shutdown: 'Blended' },
+  somatic:   { grounded: 'Grounded',   activated: 'Activated',      shutdown: 'Shutdown' },
 };
 
 const EMOTION_TAG_COLOR: Record<string, string> = {
@@ -532,7 +533,7 @@ const ARC_BAND_COLORS = ['#8FAE9A', '#B8A080', '#A89ABF'];
 function getArcBandLabels(framework: string): Array<{ label: string; color: string }> {
   const vocabMap = VOCAB_NAMES[framework] ?? VOCAB_NAMES.plain;
   return [
-    { label: vocabMap.settled,   color: ARC_BAND_COLORS[0] },
+    { label: vocabMap.grounded,   color: ARC_BAND_COLORS[0] },
     { label: vocabMap.activated, color: ARC_BAND_COLORS[1] },
     { label: vocabMap.shutdown,  color: ARC_BAND_COLORS[2] },
   ];
@@ -566,7 +567,7 @@ function ArcChart({ sessions, integrations, framework, showInfoTooltip, setShowI
   const BAND_H = CHART_H / 3;
 
   function nsY(state?: string | null): number {
-    if (state === 'settled')   return BAND_H * 0.5;
+    if (state === 'grounded')   return BAND_H * 0.5;
     if (state === 'activated') return BAND_H * 1.5;
     return BAND_H * 2.5;
   }
@@ -611,6 +612,8 @@ function ArcChart({ sessions, integrations, framework, showInfoTooltip, setShowI
       practiceType: primarySession.session.practice_type ?? null,
       sessionCount,
       sessionsOnDate,
+      stateBefore: primarySession.checkin?.nervous_system_state_before ?? null,
+      stateAfter: primarySession.checkin?.nervous_system_state ?? null,
     };
   });
 
@@ -634,7 +637,14 @@ function ArcChart({ sessions, integrations, framework, showInfoTooltip, setShowI
           <View style={s.arcLegendRow}>
             {getArcBandLabels(framework).map(({ label, color }) => (
               <View key={label} style={s.arcLegendItem}>
-                <View style={[s.arcLegendDot, { backgroundColor: color }]} />
+                <View style={[s.arcLegendDot, {
+                  backgroundColor: color,
+                  shadowColor: color,
+                  shadowOpacity: 0.4,
+                  shadowRadius: 4,
+                  shadowOffset: { width: 0, height: 2 },
+                  elevation: 3,
+                }]} />
                 <Text style={s.arcLegendText}>{label}</Text>
               </View>
             ))}
@@ -647,10 +657,29 @@ function ArcChart({ sessions, integrations, framework, showInfoTooltip, setShowI
                 {/* Chart background */}
                 <Rect x={0} y={0} width={chartW} height={CHART_H} fill={COLORS.background} rx={12} ry={12} />
 
-                {/* Connecting line */}
-                <Path d={linePath} stroke="#B07FFF" strokeOpacity={0.5} strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                {/* Polyvagal band backgrounds (Section 2a) */}
+                <Rect x={0} y={0} width={chartW} height={CHART_H / 3} fill={WELLNESS_TONES.grounded} fillOpacity={0.07} />
+                <Rect x={0} y={CHART_H / 3} width={chartW} height={CHART_H / 3} fill={WELLNESS_TONES.activated} fillOpacity={0.07} />
+                <Rect x={0} y={CHART_H * 2 / 3} width={chartW} height={CHART_H / 3} fill={WELLNESS_TONES.shutdown} fillOpacity={0.07} />
 
-                {/* Data points, selection halo + invisible tap targets */}
+                {/* Band labels (framework-aware) */}
+                {getArcBandLabels(framework).map(({ label }, i) => (
+                  <SvgText
+                    key={label}
+                    x={6}
+                    y={CHART_H / 3 * i + CHART_H / 6 + 3}
+                    fontSize={9}
+                    fill={WELLNESS_TONES[(['grounded', 'activated', 'shutdown'] as const)[i]]}
+                    fillOpacity={0.6}
+                  >
+                    {label}
+                  </SvgText>
+                ))}
+
+                {/* Connecting line (Section 2c: reduced opacity) */}
+                <Path d={linePath} stroke="#B07FFF" strokeOpacity={0.22} strokeWidth={1} fill="none" strokeLinecap="round" />
+
+                {/* Data points — 5-layer constellation (Section 2b) */}
                 {points.map((p, i) => {
                   // Get practice type symbol
                   const getPracticeSymbol = (practiceType: string | null): string => {
@@ -663,29 +692,77 @@ function ArcChart({ sessions, integrations, framework, showInfoTooltip, setShowI
                     return '◯';
                   };
                   const symbol = getPracticeSymbol(p.practiceType);
+                  const isMultiSession = p.sessionCount > 1;
 
                   return (
                     <React.Fragment key={i}>
-                      {/* Selection halo */}
-                      <Circle cx={p.x} cy={p.y} r={16} fill="#B07FFF" fillOpacity={selected === i ? 0.16 : 0} />
+                      {/* Layer 1: Selection halo */}
+                      <Circle cx={p.x} cy={p.y} r={18} fill="#B07FFF" fillOpacity={selected === i ? 0.16 : 0} />
 
-                      {/* Outer glow ring */}
-                      <Circle cx={p.x} cy={p.y} r={11} fill={p.dotColor} fillOpacity={0.18} />
+                      {/* Layer 2: Outer glow halo (larger for multi-session) */}
+                      <Circle cx={p.x} cy={p.y} r={isMultiSession ? 22 : 18} fill={p.dotColor} fillOpacity={0.08} />
 
-                      {/* Solid inner circle */}
-                      <Circle cx={p.x} cy={p.y} r={7} fill={p.dotColor} fillOpacity={0.85} />
+                      {/* Layer 3: Multi-session ring (stroke only) */}
+                      {isMultiSession && (
+                        <Circle cx={p.x} cy={p.y} r={14} stroke={p.dotColor} strokeWidth={1.5} strokeOpacity={0.3} fill="none" />
+                      )}
+
+                      {/* Layer 4: Mid glow ring */}
+                      <Circle cx={p.x} cy={p.y} r={11} fill={p.dotColor} fillOpacity={0.22} />
+
+                      {/* Layer 5: Solid core */}
+                      <Circle cx={p.x} cy={p.y} r={6} fill={p.dotColor} fillOpacity={0.9} />
 
                       {/* Practice type symbol */}
                       <SvgText
                         x={p.x}
-                        y={p.y + 3.5}
+                        y={p.y + 3}
                         textAnchor="middle"
-                        fontSize={9}
+                        fontSize={8}
                         fill="#FFFFFF"
                         fontWeight="600"
+                        opacity={0.85}
                       >
                         {symbol}
                       </SvgText>
+
+                      {/* State shift indicator (Section 9) */}
+                      {p.stateBefore && p.stateBefore !== p.stateAfter && (() => {
+                        const beforeY = nsY(p.stateBefore);
+                        const afterY = p.y;
+                        const isPositive = beforeY > afterY; // moving up = more grounded = positive
+                        const lineColor = isPositive ? WELLNESS_TONES.grounded : WELLNESS_TONES.shutdown;
+                        return (
+                          <>
+                            {/* Shift line connecting before to after */}
+                            <Line
+                              x1={p.x} y1={beforeY}
+                              x2={p.x} y2={afterY}
+                              stroke={lineColor}
+                              strokeWidth={1.5}
+                              strokeOpacity={0.5}
+                              strokeDasharray={[2, 2]}
+                            />
+                            {/* Before dot — smaller, faded */}
+                            <Circle
+                              cx={p.x} cy={beforeY}
+                              r={4}
+                              fill={getWellnessDotColor(p.stateBefore)}
+                              fillOpacity={0.45}
+                            />
+                            {/* Shift arrow chevron at midpoint */}
+                            <SvgText
+                              x={p.x + 8}
+                              y={(beforeY + afterY) / 2 + 3}
+                              fontSize={8}
+                              fill={lineColor}
+                              fillOpacity={0.7}
+                            >
+                              {isPositive ? '↑' : '↓'}
+                            </SvgText>
+                          </>
+                        );
+                      })()}
 
                       {/* Invisible tap target */}
                       <Circle
@@ -723,7 +800,12 @@ function ArcChart({ sessions, integrations, framework, showInfoTooltip, setShowI
                     {sel.fullDate}
                     {sel.sessionCount > 1 ? ` (${sel.sessionCount} sessions)` : ''}
                   </Text>
-                  {(sel.practiceType || sel.stateName) ? (
+                  {/* State shift (before → after) */}
+                  {sel.stateBefore && sel.stateBefore !== sel.stateAfter ? (
+                    <Text style={s.arcTooltipRow}>
+                      {getStateName(framework, sel.stateBefore)} → {sel.stateName}
+                    </Text>
+                  ) : (sel.practiceType || sel.stateName) ? (
                     <Text style={s.arcTooltipRow}>
                       {[sel.practiceType, sel.stateName].filter(Boolean).join(' · ')}
                     </Text>
@@ -752,68 +834,350 @@ function ArcChart({ sessions, integrations, framework, showInfoTooltip, setShowI
 
 // ---- Breakdown view ----
 
-function BreakdownView({ sessions, framework }: { sessions: SessionWithCheckin[]; framework: string }) {
+function computeShiftStats(sessions: SessionWithCheckin[]) {
+  // Positive shift: before state is lower (more dysregulated) than after state
+  const stateRank: Record<string, number> = { grounded: 2, activated: 1, shutdown: 0 };
+
+  let shiftsTotal = 0;
+  let shiftsPositive = 0;
+  const practiceShifts: Record<string, { total: number; grounded: number }> = {};
+
+  sessions.forEach((swc) => {
+    const before = swc.checkin?.nervous_system_state_before;
+    const after = swc.checkin?.nervous_system_state;
+    const practice = swc.session.practice_type?.split(':')[0].trim() ?? 'Other';
+
+    if (before && after && before !== after) {
+      shiftsTotal++;
+      const isPositive = (stateRank[after] ?? 0) > (stateRank[before] ?? 0);
+      if (isPositive) shiftsPositive++;
+    }
+
+    if (after) {
+      if (!practiceShifts[practice]) practiceShifts[practice] = { total: 0, grounded: 0 };
+      practiceShifts[practice].total++;
+      if (after === 'grounded') practiceShifts[practice].grounded++;
+    }
+  });
+
+  const positiveShiftRate = shiftsTotal > 0 ? Math.round((shiftsPositive / shiftsTotal) * 100) : null;
+
+  const practiceCorrelation = Object.entries(practiceShifts)
+    .filter(([, v]) => v.total >= 2) // only show practices with 2+ sessions
+    .map(([practice, v]) => ({
+      practice,
+      pct: Math.round((v.grounded / v.total) * 100),
+      total: v.total,
+      color: getPracticeTypeColor(practice),
+    }))
+    .sort((a, b) => b.pct - a.pct);
+
+  return { positiveShiftRate, practiceCorrelation };
+}
+
+function BodyHeatMapSkia({
+  topRegions,
+  maxCount,
+}: {
+  topRegions: Array<{ region: string; count: number }>;
+  maxCount: number;
+}) {
+  const FIGURE_W = SCREEN_W - 80;
+  const FIGURE_H = 220;
+
+  // These positions are expressed as fractions of FIGURE_W / FIGURE_H
+  // and match where BodyFigureEllipses renders each region on the body figure.
+  // Adjust these values if the blobs appear misaligned after first render.
+  const REGION_POSITIONS: Record<string, { x: number; y: number }> = {
+    'Head / mind':            { x: 0.50, y: 0.07 },
+    'Eyes':                   { x: 0.50, y: 0.10 },
+    'Jaw / face':             { x: 0.50, y: 0.13 },
+    'Throat':                 { x: 0.50, y: 0.20 },
+    'Chest / heart':          { x: 0.50, y: 0.31 },
+    'Shoulders / upper back': { x: 0.50, y: 0.25 },
+    'Arms / hands':           { x: 0.50, y: 0.40 },
+    'Solar plexus / gut':     { x: 0.50, y: 0.44 },
+    'Pelvis / lower belly':   { x: 0.50, y: 0.55 },
+    'Legs / feet':            { x: 0.50, y: 0.78 },
+    'Spine':                  { x: 0.50, y: 0.42 },
+    'Full body':              { x: 0.50, y: 0.45 },
+  };
+
+  return (
+    <View style={{
+      width: FIGURE_W,
+      height: FIGURE_H,
+      alignSelf: 'center',
+      overflow: 'hidden',
+      marginBottom: 8,
+    }}>
+      {/* Existing body figure — renders the correct silhouette */}
+      <BodyFigureEllipses
+        width={FIGURE_W}
+        bodySensations={topRegions.map(({ region }) => ({ region, quality: null }))}
+      />
+      {/* Skia heat blobs — absolutely positioned on top */}
+      <Canvas
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      >
+        {topRegions.map(({ region, count }) => {
+          const pos = REGION_POSITIONS[region];
+          if (!pos) return null;
+          const intensity = count / maxCount;
+          const cx = pos.x * FIGURE_W;
+          const cy = pos.y * FIGURE_H;
+          const r = 14 + intensity * 32;  // range: 14px (rare) to 46px (dominant)
+          const color = getRegionColor(region);
+          return (
+            <SkiaCircle
+              key={region}
+              cx={cx}
+              cy={cy}
+              r={r}
+              color={color}
+              opacity={0.15 + intensity * 0.65}  // range: 0.15 (rare) to 0.80 (dominant)
+            >
+              <BlurMask blur={20} style="normal" />
+            </SkiaCircle>
+          );
+        })}
+      </Canvas>
+    </View>
+  );
+}
+
+function computeEmotionFrequency(sessions: SessionWithCheckin[]): Array<{
+  tag: string;
+  count: number;
+  color: string;
+  bgColor: string;
+}> {
+  const counts: Record<string, number> = {};
+  sessions.forEach((swc) => {
+    (swc.checkin?.emotion_tags ?? []).forEach((tag) => {
+      counts[tag] = (counts[tag] ?? 0) + 1;
+    });
+  });
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([tag, count]) => {
+      const colors = getEmotionColor(tag); // from @/lib/theme — returns { bg, text }
+      return { tag, count, color: colors.text, bgColor: colors.bg };
+    });
+}
+
+function computeIntegrationRate(
+  sessions: SessionWithCheckin[],
+  integrations: Integration[],
+): { rate: number; withInteg: number; total: number } {
+  const total = sessions.length;
+  if (total === 0) return { rate: 0, withInteg: 0, total: 0 };
+  // Count sessions that have at least one integration note logged after them
+  let withInteg = 0;
+  sessions.forEach((swc) => {
+    const sessionTime = new Date(swc.session.created_at).getTime();
+    const hasInteg = integrations.some((integ) => {
+      const integTime = new Date(integ.created_at || integ.note_date).getTime();
+      return integTime > sessionTime;
+    });
+    if (hasInteg) withInteg++;
+  });
+  return { rate: Math.round((withInteg / total) * 100), withInteg, total };
+}
+
+function BreakdownView({
+  sessions,
+  framework,
+  integrations,
+}: {
+  sessions: SessionWithCheckin[];
+  framework: string;
+  integrations: Integration[];
+}) {
   if (sessions.length === 0) return <Text style={{ fontSize: 13, color: '#999999', textAlign: 'center', paddingTop: 20 }}>No sessions yet.</Text>;
   const { nsPercents, topEmotions, topRegions } = computeBreakdown(sessions);
-  const nsOrdered = ['settled', 'activated', 'shutdown'];
+  const { positiveShiftRate, practiceCorrelation } = computeShiftStats(sessions);
+  const emotionFrequency = computeEmotionFrequency(sessions);
+  const nsOrdered = ['grounded', 'activated', 'shutdown'];
   const vocabMap = VOCAB_NAMES[framework] ?? VOCAB_NAMES.plain;
-  const maxRegionCount = topRegions[0]?.count ?? 1;
+  const maxCount = topRegions[0]?.count ?? 1;
   const featuredEmotion = topEmotions[0] ?? null;
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
-      {/* Nervous system cards */}
+      {/* Nervous system cards (Section 3a) */}
       <View style={s.bkSection}>
         <View style={s.bkNsCards}>
           {nsOrdered.map((key) => {
             const pct = nsPercents[key] ?? 0;
             const tone = WELLNESS_TONES[key];
             return (
-              <View key={key} style={[s.bkNsCard, { backgroundColor: tone + '1A' }]}>
+              <View key={key} style={[s.bkNsCard, {
+                backgroundColor: tone + '1A',
+                borderLeftWidth: 3,
+                borderLeftColor: tone,
+              }]}>
                 <View style={s.bkNsCardHeader}>
-                  <Text style={s.bkNsCardName}>{vocabMap[key]}</Text>
+                  <Text style={s.bkNsCardName}>{getStateName(framework, key)}</Text>
                 </View>
                 <Text style={[s.bkNsCardPct, { color: tone }]}>{pct}%</Text>
+                {/* Progress bar */}
+                <View style={{ width: '100%', height: 3, borderRadius: 2, backgroundColor: tone + '20', marginTop: 8 }}>
+                  <View style={{ width: `${pct}%`, height: 3, borderRadius: 2, backgroundColor: tone, opacity: 0.7 }} />
+                </View>
               </View>
             );
           })}
         </View>
       </View>
 
-      {/* Dominant emotion */}
+      {/* Dominant emotion (Section 3b) */}
       {featuredEmotion && (
         <View style={s.bkSection}>
           <Text style={[s.bkLabel, { textAlign: 'center' }]}>DOMINANT EMOTION</Text>
-          <View style={s.bkDominantCard}>
+          <ExpoLinearGradient
+            colors={['rgba(176,127,255,0.10)', 'rgba(176,127,255,0.02)']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={s.bkDominantCard}
+          >
             <Text style={s.bkDominantEmotion}>
               {featuredEmotion.tag.charAt(0).toUpperCase() + featuredEmotion.tag.slice(1)}
             </Text>
-          </View>
+          </ExpoLinearGradient>
         </View>
       )}
 
-      {/* Body regions with body figure */}
+      {/* Body regions (Section 3c) */}
       {topRegions.length > 0 && (
         <View style={s.bkSection}>
           <Text style={s.bkLabel}>BODY REGIONS</Text>
           <View style={{ alignItems: 'center', marginBottom: 16 }}>
-            <BodyFigureEllipses
-              width={SCREEN_W - 80}
-              bodySensations={topRegions.map(({ region }) => ({ region, quality: null }))}
-            />
+            <BodyHeatMapSkia topRegions={topRegions} maxCount={maxCount} />
           </View>
-          {topRegions.slice(0, 5).map(({ region, count }) => {
-            const dotColor = REGION_CHAKRA_COLORS[region] ?? '#9B7FBF';
-            return (
-              <View key={region} style={s.regionListRow}>
-                <View style={[s.regionListDot, { backgroundColor: dotColor }]} />
-                <Text style={s.regionListName} numberOfLines={1}>{region.replace('_', ' / ')}</Text>
-                <Text style={s.regionListCount}>{count}</Text>
-              </View>
-            );
-          })}
         </View>
       )}
+
+      {/* Positive shift rate hero card (Section 10b) */}
+      {positiveShiftRate !== null && (
+        <View style={s.bkSection}>
+          <Text style={s.bkLabel}>SESSION SHIFT</Text>
+          <View style={s.bkShiftCard}>
+            <ExpoLinearGradient
+              colors={['rgba(143,174,154,0.12)', 'rgba(143,174,154,0.03)']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Text style={s.bkShiftPct}>{positiveShiftRate}%</Text>
+            <Text style={s.bkShiftLabel}>of sessions ended in a better state than they started</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Practice-to-state correlation (Section 10c) */}
+      {practiceCorrelation.length > 0 && (
+        <View style={[s.bkSection, { marginTop: 16 }]}>
+          <Text style={s.bkLabel}>BY PRACTICE TYPE</Text>
+          <View style={s.bkPracticeList}>
+            {practiceCorrelation.map(({ practice, pct, total, color }) => (
+              <View key={practice} style={s.bkPracticeRow}>
+                <View style={s.bkPracticeLeft}>
+                  <View style={[s.bkPracticeDot, { backgroundColor: color }]} />
+                  <Text style={s.bkPracticeName} numberOfLines={1}>{practice}</Text>
+                </View>
+                <View style={s.bkPracticeBarWrap}>
+                  <View style={s.bkPracticeBarBg}>
+                    <View style={[s.bkPracticeBarFill, {
+                      width: `${pct}%` as any,
+                      backgroundColor: WELLNESS_TONES.grounded,
+                    }]} />
+                  </View>
+                  <Text style={s.bkPracticePct}>{pct}%</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+          <Text style={s.bkPracticeFootnote}>% of sessions ending grounded · min. 2 sessions</Text>
+        </View>
+      )}
+
+      {/* Emotion bubble cluster */}
+      {emotionFrequency.length > 0 && (
+        <View style={s.bkSection}>
+          <Text style={s.bkLabel}>What keeps surfacing</Text>
+          <Text style={s.bkNarrativeText}>
+            {`${emotionFrequency[0].tag.charAt(0).toUpperCase() + emotionFrequency[0].tag.slice(1)} appears most across this period.`}
+          </Text>
+          <View style={s.emotionBubbleWrap}>
+            {emotionFrequency.map(({ tag, count, color, bgColor }, i) => {
+              // Largest bubble = index 0. Scale font and padding by rank.
+              const maxCount = emotionFrequency[0].count;
+              const intensity = count / maxCount;
+              const fontSize = 11 + intensity * 7;   // 11–18px
+              const paddingH = 10 + intensity * 6;   // 10–16px
+              const paddingV = 6 + intensity * 4;    // 6–10px
+              return (
+                <View
+                  key={tag}
+                  style={[
+                    s.emotionBubble,
+                    {
+                      backgroundColor: bgColor,
+                      paddingHorizontal: paddingH,
+                      paddingVertical: paddingV,
+                    },
+                  ]}
+                >
+                  <Text style={[s.emotionBubbleText, { fontSize, color }]}>
+                    {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {/* Integration rate */}
+      {(() => {
+        const { rate, withInteg, total } = computeIntegrationRate(sessions, integrations);
+        if (total < 2) return null;
+        // Dot row — one dot per session, filled if integration exists after it
+        const dots = sessions.slice(0, 10).map((swc, i) => {
+          const sessionTime = new Date(swc.session.created_at).getTime();
+          const hasInteg = integrations.some((integ) => {
+            const integTime = new Date(integ.created_at || integ.note_date).getTime();
+            return integTime > sessionTime;
+          });
+          return hasInteg;
+        });
+        return (
+          <View style={s.bkSection}>
+            <Text style={s.bkLabel}>Integration</Text>
+            <Text style={s.bkNarrativeText}>
+              {`You integrated after ${withInteg} of your last ${total} sessions.`}
+            </Text>
+            <View style={s.integDotRow}>
+              {dots.map((filled, i) => (
+                <View
+                  key={i}
+                  style={[
+                    s.integDot,
+                    {
+                      backgroundColor: filled
+                        ? WELLNESS_TONES.grounded
+                        : COLORS.track,
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        );
+      })()}
     </ScrollView>
   );
 }
@@ -1435,38 +1799,35 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={s.safe}>
+      <ExpoLinearGradient
+        colors={['rgba(176, 127, 255, 0.18)', 'transparent']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0,
+          height: 200,
+          zIndex: 0,
+        }}
+        pointerEvents="none"
+      />
       <View style={{ flex: 1, zIndex: 1 }}>
-        {/* Ambient gradient background */}
-        <ExpoLinearGradient
-          colors={[COLORS.crownTint, COLORS.background]}
-          style={s.ambientGradient}
-          pointerEvents="none"
-        />
-
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
 
           {/* ---- Header ---- */}
-          <ExpoLinearGradient
-            colors={['rgba(176, 127, 255, 0.18)', 'transparent']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={s.gradientHeader}
-          >
-          <View style={s.headerTopRow}>
-            <View style={{ flex: 1 }} />
+          <View style={s.header}>
+            <View style={s.greetingRow}>
+              <Text style={s.greeting}>{getGreeting(userName)}</Text>
+              {IS_DEV && (
+                <View style={s.devBadge}>
+                  <Text style={s.devBadgeText}>DEV</Text>
+                </View>
+              )}
+            </View>
             <TouchableOpacity onPress={() => router.push('/settings' as any)} hitSlop={8}>
               <MaterialCommunityIcons name="cog-outline" size={20} color="#CCCCCC" />
             </TouchableOpacity>
           </View>
-          <View style={s.greetingRow}>
-            <Text style={s.greeting}>{getGreeting(userName)}</Text>
-            {IS_DEV && (
-              <View style={s.devBadge}>
-                <Text style={s.devBadgeText}>DEV</Text>
-              </View>
-            )}
-          </View>
-        </ExpoLinearGradient>
 
         {populated ? (
           <View style={s.populatedContent}>
@@ -1493,7 +1854,12 @@ export default function HomeScreen() {
                         </View>
                         {j.duration_days ? (
                           <View style={s.journeyCardBarBg}>
-                            <View style={[s.journeyCardBarFill, { width: `${Math.round(pct * 100)}%` as any, backgroundColor: accent + '59' }]} />
+                            <ExpoLinearGradient
+                              colors={[accent + 'BB', accent + '33']}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={[s.journeyCardBarFill, { width: `${Math.round(pct * 100)}%` as any }]}
+                            />
                           </View>
                         ) : null}
                       </TouchableOpacity>
@@ -1571,6 +1937,42 @@ export default function HomeScreen() {
                 const { sessions: fs, integrations: fi } = filterByWindow(sessions, integrations, somaFilter);
                 return (
                   <>
+                    {/* Narrative sentence with streak (Section 11) */}
+                    {somaView === 'arc' && fs.length > 0 && (() => {
+                      // Dominant state label
+                      const recent = fs.slice(0, 5);
+                      const counts: Record<string, number> = {};
+                      recent.forEach(x => {
+                        const st = x.checkin?.nervous_system_state;
+                        if (st) counts[st] = (counts[st] ?? 0) + 1;
+                      });
+                      const dominantState = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+                      // Grounded streak (from most recent)
+                      const sorted = [...fs].sort((a, b) =>
+                        b.session.created_at.localeCompare(a.session.created_at)
+                      );
+                      let streak = 0;
+                      for (const swc of sorted) {
+                        if (swc.checkin?.nervous_system_state === 'grounded') streak++;
+                        else break;
+                      }
+
+                      const label = dominantState ? getStateName(framework, dominantState) : null;
+                      const groundedLabel = getStateName(framework, 'grounded');
+
+                      // Prefer streak sentence when streak >= 2, otherwise dominant state
+                      let sentence: string | null = null;
+                      if (streak >= 2) {
+                        sentence = `Your last ${streak} sessions all ended ${groundedLabel.toLowerCase()}.`;
+                      } else if (label) {
+                        sentence = `Mostly ${label.toLowerCase()} across your last ${Math.min(fs.length, 5)} sessions.`;
+                      }
+
+                      if (!sentence) return null;
+                      return <Text style={s.somaNarrativeText}>{sentence}</Text>;
+                    })()}
+
                     {somaView === 'arc' && <ArcChart sessions={fs} integrations={fi} framework={framework} showInfoTooltip={showInfoTooltip} setShowInfoTooltip={setShowInfoTooltip} />}
                     {somaView === 'calendar' && (
                       <CalendarView
@@ -1578,7 +1980,7 @@ export default function HomeScreen() {
                         onDayPress={openDayDetail}
                       />
                     )}
-                    {somaView === 'breakdown' && <BreakdownView sessions={fs} framework={framework} />}
+                    {somaView === 'breakdown' && <BreakdownView sessions={fs} framework={framework} integrations={fi} />}
                   </>
                 );
               })()}
@@ -1612,8 +2014,27 @@ export default function HomeScreen() {
                         </View>
                       ))}
                     </View>
-                    <View style={s.lastSessionRight}>
+                    <View style={[s.lastSessionRight, {
+                      backgroundColor: COLORS.accentTint,
+                      borderRadius: 16,
+                      padding: 8,
+                      alignItems: 'center',
+                    }]}>
                       <BodyFigureEllipses width={80} bodySensations={lastSession.checkin?.body_sensations ?? []} />
+                      {/* Region dot row below body figure (Section 5) */}
+                      {(lastSession.checkin?.body_sensations ?? []).length > 0 && (
+                        <View style={{ flexDirection: 'row', gap: 4, marginTop: 6, justifyContent: 'center' }}>
+                          {(lastSession.checkin?.body_sensations ?? []).slice(0, 3).map((bs) => (
+                            <View
+                              key={bs.region}
+                              style={{
+                                width: 6, height: 6, borderRadius: 3,
+                                backgroundColor: getRegionColor(bs.region),
+                              }}
+                            />
+                          ))}
+                        </View>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -1779,12 +2200,12 @@ const s = StyleSheet.create({
   },
 
   // Header
-  gradientHeader: {
-    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24,
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16,
   },
-  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
-  greeting: { fontSize: 28, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A', letterSpacing: -0.5 },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  greeting: { fontSize: 32, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A', letterSpacing: -0.5 },
   devBadge: { backgroundColor: '#B07FFF', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 },
   devBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5 },
   headerDate: { fontSize: 13, fontWeight: '400', color: '#999999' },
@@ -1867,8 +2288,8 @@ const s = StyleSheet.create({
   journeyCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   journeyCardName: { fontSize: 18, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A' },
   journeyCardCount: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: '#999999' },
-  journeyCardBarBg: { height: 6, borderRadius: 8, backgroundColor: COLORS.accentTint },
-  journeyCardBarFill: { height: 6, borderRadius: 8 },
+  journeyCardBarBg: { height: 5, borderRadius: 99, backgroundColor: COLORS.accentTint },
+  journeyCardBarFill: { height: 5, borderRadius: 99 },
 
   // Your Soma card
   somaCard: { padding: 20 },
@@ -1899,6 +2320,14 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.accent,
     shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2,
   },
+  somaNarrativeText: {
+    fontFamily: 'Nunito_400Regular',
+    fontSize: 13,
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
 
   // Icon legend
   iconLegend: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', alignItems: 'center' },
@@ -1909,7 +2338,7 @@ const s = StyleSheet.create({
   // Arc chart
   arcLegendRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12 },
   arcLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  arcLegendDot: { width: 8, height: 8, borderRadius: 4 },
+  arcLegendDot: { width: 10, height: 10, borderRadius: 5 },
   arcLegendText: { fontSize: 12, fontWeight: '400', color: '#666666' },
   arcInfoIcon: { position: 'absolute', bottom: 12, right: 12 },
   arcInfoTooltip: {
@@ -1985,18 +2414,81 @@ const s = StyleSheet.create({
   },
   // NS state cards (3 side-by-side)
   bkNsCards: { flexDirection: 'row', gap: 8 },
-  bkNsCard: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center' },
+  bkNsCard: { flex: 1, borderRadius: 16, padding: 14, alignItems: 'center' },
   bkNsCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   bkNsCardName: { fontSize: 13, fontWeight: '400', color: '#999999', fontFamily: 'Nunito_400Regular', textAlign: 'center' },
-  bkNsCardPct: { fontSize: 28, fontFamily: 'DMSerifDisplay_400Regular', lineHeight: 32, textAlign: 'center' },
+  bkNsCardPct: { fontSize: 32, fontFamily: 'DMSerifDisplay_400Regular', lineHeight: 36, textAlign: 'center' },
   // Dominant emotion
   bkDominantCard: { backgroundColor: '#B07FFF14', borderRadius: 12, padding: 16, alignItems: 'center' },
-  bkDominantEmotion: { fontSize: 28, fontFamily: 'DMSerifDisplay_400Regular', color: '#B07FFF', textTransform: 'capitalize', textAlign: 'center' },
+  bkDominantEmotion: { fontSize: 32, fontFamily: 'DMSerifDisplay_400Regular', color: '#B07FFF', textTransform: 'capitalize', textAlign: 'center' },
   // Body regions with list
   regionListRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   regionListDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
   regionListName: { flex: 1, fontFamily: 'Nunito_400Regular', fontSize: 14, color: '#666666', textTransform: 'capitalize' },
   regionListCount: { fontFamily: 'Nunito_400Regular', fontSize: 14, color: '#999999' },
+  // Shift stats (Section 10)
+  bkShiftCard: {
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderLeftWidth: 3,
+    borderLeftColor: WELLNESS_TONES.grounded,
+  },
+  bkShiftPct: {
+    fontFamily: 'DMSerifDisplay_400Regular',
+    fontSize: 48,
+    color: COLORS.grounded,
+    lineHeight: 52,
+    marginBottom: 6,
+  },
+  bkShiftLabel: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  bkPracticeList: { gap: 10 },
+  bkPracticeRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  bkPracticeLeft: { flexDirection: 'row', alignItems: 'center', gap: 6, width: 100 },
+  bkPracticeDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  bkPracticeName: { fontSize: 12, color: COLORS.textSecondary, flex: 1 },
+  bkPracticeBarWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  bkPracticeBarBg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: COLORS.track },
+  bkPracticeBarFill: { height: 4, borderRadius: 2 },
+  bkPracticePct: { fontSize: 12, color: COLORS.textTertiary, minWidth: 30, textAlign: 'right' },
+  bkPracticeFootnote: { fontSize: 10, color: COLORS.textQuaternary, marginTop: 8, fontStyle: 'italic' },
+  emotionBubbleWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  emotionBubble: {
+    borderRadius: 99,
+  },
+  emotionBubbleText: {
+    fontFamily: 'Nunito_400Regular',
+    fontWeight: '400',
+  },
+  bkNarrativeText: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  integDotRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 10,
+    flexWrap: 'wrap',
+  },
+  integDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
 
   // Session detail sheet
   detailSheet: {

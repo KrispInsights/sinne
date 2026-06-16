@@ -16,7 +16,7 @@ import { FONTS, COLORS, CARD_SHADOW, OPTION_TEXT } from '@/lib/theme';
 // ---- Constants ----
 
 const NS_STATES = [
-  { key: 'settled',   labels: { plain: 'Settled',   polyvagal: 'Ventral',     ifs: 'Self',           somatic: 'Settled'   }, bg: '#F2F7F3', text: '#7AAE8A', border: '#7AAE8A' },
+  { key: 'grounded',   labels: { plain: 'grounded',   polyvagal: 'Ventral',     ifs: 'Self',           somatic: 'grounded'   }, bg: '#F2F7F3', text: '#7AAE8A', border: '#7AAE8A' },
   { key: 'activated', labels: { plain: 'Activated', polyvagal: 'Sympathetic', ifs: 'Activated part', somatic: 'Activated' }, bg: '#FAF8F0', text: '#C9B96A', border: '#C9B96A' },
   { key: 'shutdown',  labels: { plain: 'Shutdown',  polyvagal: 'Dorsal',      ifs: 'Blended',        somatic: 'Shutdown'  }, bg: '#F2F0F5', text: '#7E6B9E', border: '#7E6B9E' },
 ];
@@ -70,7 +70,7 @@ const CONNECTION_OPTIONS = [
 
 function getStateColor(state: string | null | undefined): { border: string; bg: string } {
   const colors: Record<string, { border: string; bg: string }> = {
-    settled: { border: '#7AAE8A', bg: '#7AAE8A40' },
+    grounded: { border: '#7AAE8A', bg: '#7AAE8A40' },
     grounded: { border: '#7AAE8A', bg: '#7AAE8A40' },
     activated: { border: '#C9B96A', bg: '#C9B96A40' },
     shutdown: { border: '#7E6B9E', bg: '#7E6B9E40' },

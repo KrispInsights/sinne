@@ -16,7 +16,7 @@ module.exports = {
         destructive: '#C0392B',
 
         // Nervous system state colours
-        settled: {
+        grounded: {
           bg: '#EAF5EF',
           text: '#2a6645',
           border: '#a8d5bc',

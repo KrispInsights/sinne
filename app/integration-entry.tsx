@@ -8,21 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { createIntegration, getActiveJourneys } from '@/lib/storage';
 import type { CreateIntegrationInput, Journey } from '@/lib/types';
-import { COLORS } from '@/lib/theme';
-
-// ---- Category colors ----
-
-const CATEGORY_COLOR: Record<string, string> = {
-  Actions:      '#C49A6C',
-  Body:         '#7AAE8A',
-  Emotions:     '#6E9BB5',
-  Gratitude:    '#C9B96A',
-  Meaning:      '#9B7FBF',
-  Memories:     '#7A8B8B',
-  Patterns:     '#8B6347',
-  Realizations: '#7E6B9E',
-  Triggers:     '#B5736A',
-};
+import { COLORS, CATEGORY_DATA } from '@/lib/theme';
 
 // ---- Sub-questions per category ----
 
@@ -118,7 +104,7 @@ export default function IntegrationEntryScreen() {
 
   const cat = category ?? 'Emotions';
   const questions = CATEGORY_QUESTIONS[cat] ?? CATEGORY_QUESTIONS.Emotions;
-  const accentColor = CATEGORY_COLOR[cat] ?? '#9B7FBF';
+  const accentColor = CATEGORY_DATA[cat]?.color ?? '#9B7FBF';
   const accentTint = accentColor + '18';
 
   const today = todayString();

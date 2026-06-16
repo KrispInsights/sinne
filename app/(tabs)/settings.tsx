@@ -20,10 +20,10 @@ const CARD_SHADOW = {
 } as const;
 
 const VOCAB_OPTIONS = [
-  { key: 'plain',     label: 'Plain language',               example: 'Settled / Activated / Shutdown' },
+  { key: 'plain',     label: 'Plain language',               example: 'grounded / Activated / Shutdown' },
   { key: 'polyvagal', label: 'Polyvagal',                    example: 'Ventral / Sympathetic / Dorsal' },
   { key: 'ifs',       label: 'IFS, Internal Family Systems', example: 'Self / Activated part / Blended' },
-  { key: 'somatic',   label: 'Somatic',                       example: 'Settled / Activated / Shutdown' },
+  { key: 'somatic',   label: 'Somatic',                       example: 'grounded / Activated / Shutdown' },
 ] as const;
 
 type VocabKey = typeof VOCAB_OPTIONS[number]['key'];

@@ -5,6 +5,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { getJourneys, getSessions, getIntegrations } from '@/lib/storage';
 import type { Journey, Integration } from '@/lib/types';
 import { COLORS, RADII, CARD_SHADOW, FONTS } from '@/lib/theme';
@@ -229,6 +230,18 @@ export default function JourneysScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={s.safe}>
+      <LinearGradient
+        colors={['rgba(176, 127, 255, 0.18)', 'transparent']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0,
+          height: 200,
+          zIndex: 0,
+        }}
+        pointerEvents="none"
+      />
       <View style={s.header}>
         <View>
           <Text style={s.title}>Journeys</Text>

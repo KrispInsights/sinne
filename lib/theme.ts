@@ -99,7 +99,7 @@ export const COLORS = {
   destructive: '#FF2A2A',
 
   // Wellness tones (nervous system states)
-  settled: '#8FAE9A',
+  grounded: '#8FAE9A',
   activated: '#D6C2A1',
   activatedLabel: '#B8A080',
   shutdown: '#A89ABF',
@@ -151,7 +151,7 @@ export const SHEET_STYLE: ViewStyle = {
 // bg uses the wellness tone at ~10% opacity (hex 1A = 26/255 = ~10%)
 export const STATE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   grounded: { bg: '#8FAE9A1A', text: '#8FAE9A', border: '#8FAE9A' },
-  settled: { bg: '#8FAE9A1A', text: '#8FAE9A', border: '#8FAE9A' }, // Keep for backward compatibility
+  grounded: { bg: '#8FAE9A1A', text: '#8FAE9A', border: '#8FAE9A' }, // Keep for backward compatibility
   ventral: { bg: '#8FAE9A1A', text: '#8FAE9A', border: '#8FAE9A' },
   self: { bg: '#8FAE9A1A', text: '#8FAE9A', border: '#8FAE9A' },
   activated: { bg: '#D6C2A11A', text: '#B8A080', border: '#D6C2A1' },
@@ -160,6 +160,22 @@ export const STATE_COLORS: Record<string, { bg: string; text: string; border: st
   shutdown: { bg: '#A89ABF1A', text: '#A89ABF', border: '#A89ABF' },
   dorsal: { bg: '#A89ABF1A', text: '#A89ABF', border: '#A89ABF' },
   blended: { bg: '#A89ABF1A', text: '#A89ABF', border: '#A89ABF' },
+};
+
+
+// integration category colors
+export const CATEGORY_DATA: Record<string, {
+  icon: string; color: string; tint: string; desc: string;
+}> = {
+  Actions:      { icon: 'lightning-bolt-outline',  color: '#B07FFF', tint: '#F2EEFF', desc: 'What will you do differently?' },
+  Body:         { icon: 'human',                   color: '#B07FFF', tint: '#F2EEFF', desc: 'Physical sensations and signals' },
+  Emotions:     { icon: 'heart-outline',           color: '#B07FFF', tint: '#F2EEFF', desc: "What's still moving?" },
+  Gratitude:    { icon: 'hand-heart-outline',      color: '#B07FFF', tint: '#F2EEFF', desc: 'What you want to acknowledge' },
+  Meaning:      { icon: 'lightbulb-outline',       color: '#B07FFF', tint: '#F2EEFF', desc: 'Deeper significance' },
+  Memories:     { icon: 'image-outline',           color: '#B07FFF', tint: '#F2EEFF', desc: 'Surfacing images and moments' },
+  Patterns:     { icon: 'repeat-variant',          color: '#B07FFF', tint: '#F2EEFF', desc: 'Familiar dynamics noticed' },
+  Realizations: { icon: 'star-outline',            color: '#B07FFF', tint: '#F2EEFF', desc: 'What became clearer' },
+  Triggers:     { icon: 'alert-circle-outline',    color: '#B07FFF', tint: '#F2EEFF', desc: 'What set something off' },
 };
 
 export function getStateColor(state: string | null | undefined) {

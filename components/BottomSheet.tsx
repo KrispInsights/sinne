@@ -62,6 +62,7 @@ const s = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    maxHeight: '92%',
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

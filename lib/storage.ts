@@ -46,7 +46,7 @@ let _seeded = false;
 
 async function seedIfNeeded(): Promise<void> {
   if (_seeded) return;
-    await AsyncStorage.removeItem(KEYS.initialized); // TEMP — remove after reseedning to reset data during development
+   
   const flag = await AsyncStorage.getItem(KEYS.initialized);
   if (!flag) {
     await AsyncStorage.multiSet([

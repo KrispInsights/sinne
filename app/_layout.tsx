@@ -17,7 +17,7 @@ import {
 } from '@expo-google-fonts/dm-serif-display';
 import { getMirrorPromptType } from '@/lib/storage';
 import type { MirrorPromptType } from '@/lib/types';
-import { applyGlobalFont } from '@/lib/font';
+import { applyGlobalFont } from '@/lib/theme';
 
 SplashScreen.preventAutoHideAsync();
 applyGlobalFont();

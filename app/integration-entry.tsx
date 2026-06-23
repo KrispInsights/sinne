@@ -10,51 +10,70 @@ import { createIntegration, getActiveJourneys } from '@/lib/storage';
 import type { CreateIntegrationInput, Journey } from '@/lib/types';
 import { COLORS, CATEGORY_DATA } from '@/lib/theme';
 
+// ---- Categories that include emotion tag selection step ----
+
+const CATEGORIES_WITH_EMOTION_STEP = ['Emotions', 'Triggers', 'Memories', 'Patterns'];
+
+// ---- Progress dots indicator ----
+
+function ProgressDots({ current, total = 3 }: { current: number; total?: number }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 12 }}>
+      {Array.from({ length: total }, (_, i) => {
+        const n = i + 1;
+        if (n < current) return <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.accent + '66' }} />;
+        if (n === current) return <View key={i} style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.accent }} />;
+        return <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.track }} />;
+      })}
+    </View>
+  );
+}
+
 // ---- Sub-questions per category ----
 
 const CATEGORY_QUESTIONS: Record<string, [string, string, string]> = {
   Triggers: [
-    'What set something off?',
-    'What emotion came with it?',
+    'What situation or person triggered you?',
+    'Where did you feel it land in your body?',
     'What did you want to do, or avoid?',
   ],
   Memories: [
-    'What memory or image keeps surfacing?',
-    'How old does it feel?',
-    'What does it seem to want from you?',
+    'What memory brought you here?',
+    'Is this a new memory, or one that keeps resurfacing?',
+    'What does it feel like to stay with it, rather than understand it?',
   ],
   Emotions: [
-    'What emotions are still present?',
+    'Describe what is still moving in you right now.',
     'What feels unfinished?',
     'What are you avoiding feeling?',
   ],
   Body: [
-    'Where do you feel this in your body?',
-    'What does that sensation want you to know?',
-    'What does your body seem to need?',
+    'What is currently happening in or with your body?',
+    'Has the sensation changed since your practice, or is it the same?',
+    'What happens if you stay with it without trying to change it?',
   ],
   Patterns: [
-    'Where did you recognise yourself?',
+    'What pattern have you identified?',
     'What familiar story showed up?',
-    'Where does this pattern appear in your daily life?',
+    'What would it cost you to let this pattern go?',
   ],
   Meaning: [
-    'What might this be pointing to?',
+    'What meaning has surfaced?',
     'What assumption no longer feels true?',
-    'What new perspective is forming?',
+    'What are you not ready to name yet?',
   ],
   Realizations: [
     'What is becoming clearer?',
     'What surprised you about yourself?',
-    'What are you still sitting with?',
+    'What do you want to remember about this moment?',
   ],
   Actions: [
-    'What is one small thing you could do differently?',
+    'What is asking to be different?',
     'What needs more of your attention?',
-    'What would it look like to live this insight?',
+    'What would you do today if you trusted what you are feeling?',
   ],
   Gratitude: [
-    'What are you grateful for right now?',
+    'What met you today that you did not expect?',
     'What part of yourself showed up that you want to acknowledge?',
     'What feels like a gift, even if it was hard?',
   ],
@@ -140,8 +159,9 @@ export default function IntegrationEntryScreen() {
   async function handleSave() {
     setSaving(true);
 
-    // For Emotions category, navigate to emotion-tags screen instead of saving immediately
-    if (cat === 'Emotions') {
+    // For categories with emotion step, navigate to emotion-tags screen instead of saving immediately
+    if (CATEGORIES_WITH_EMOTION_STEP.includes(cat)) {
+      console.log(`[Integration Entry] ${cat} category detected, navigating to emotion-tags`);
       router.push({
         pathname: '/integration/emotion-tags',
         params: {
@@ -175,6 +195,10 @@ export default function IntegrationEntryScreen() {
     router.back();
   }
 
+  const hasEmotionStep = CATEGORIES_WITH_EMOTION_STEP.includes(cat);
+  const totalSteps = hasEmotionStep ? 3 : 2;
+  const currentStep = 2; // This is always screen 2 (questions)
+
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.topBar}>
@@ -184,6 +208,7 @@ export default function IntegrationEntryScreen() {
         <Text style={[s.title, { color: accentColor }]}>{cat}</Text>
         <View style={{ width: 36 }} />
       </View>
+      <ProgressDots current={currentStep} total={totalSteps} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
@@ -309,7 +334,9 @@ export default function IntegrationEntryScreen() {
             disabled={saving}
             activeOpacity={0.85}
           >
-            <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Save'}</Text>
+            <Text style={s.saveBtnText}>
+              {saving ? (hasEmotionStep ? 'Navigating…' : 'Saving…') : (hasEmotionStep ? 'Next' : 'Save')}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -324,7 +351,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 12,
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 28, color: '#B07FFF', lineHeight: 32 },
+  backText: { fontSize: 28, color: COLORS.accent, lineHeight: 32 },
   title: { fontSize: 20, fontWeight: '500', color: '#1A1A1A' },
   body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24 },
 
@@ -374,7 +401,7 @@ const s = StyleSheet.create({
     backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
     borderRadius: 12, paddingHorizontal: 16, paddingVertical: 16, gap: 12,
   },
-  journeyToggleSelected: { borderColor: '#B07FFF', backgroundColor: '#F6F0FF' },
+  journeyToggleSelected: { borderColor: COLORS.accent, backgroundColor: COLORS.accentTint },
   journeyToggleName: { fontSize: 15, fontFamily: 'Nunito_500Medium', fontWeight: '500', color: '#1A1A1A' },
   journeyToggleSub: { fontSize: 12, fontFamily: 'Nunito_400Regular', color: '#999999', marginTop: 2 },
   journeyCheckbox: {
@@ -382,7 +409,7 @@ const s = StyleSheet.create({
     borderWidth: 1.5, borderColor: '#EEEEEC',
     alignItems: 'center', justifyContent: 'center',
   },
-  journeyCheckboxChecked: { backgroundColor: '#B07FFF', borderColor: '#B07FFF' },
+  journeyCheckboxChecked: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
   journeyCheckmark: { fontSize: 13, color: '#FFFFFF', fontWeight: '700' },
 
   carryForwardPrompt: {

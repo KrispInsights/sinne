@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { INTEGRATION_EMOTION_SELECTOR } from '@/lib/types';
-import { OPTION_TEXT } from '@/lib/theme';
+import { OPTION_TEXT, COLORS } from '@/lib/theme';
 
 interface Props {
   selected: string[];
@@ -46,45 +46,60 @@ export function EmotionSelector({ selected, onChange }: Props) {
 
   return (
     <View style={s.container}>
+      {/* Primary emotions in grid layout */}
+      <View style={s.grid}>
+        {INTEGRATION_EMOTION_SELECTOR.map((emotion) => {
+          const primaryLower = emotion.primary.toLowerCase();
+          const isPrimarySelected = selected.includes(primaryLower);
+
+          return (
+            <TouchableOpacity
+              key={emotion.primary}
+              style={[
+                s.gridCard,
+                isPrimarySelected && s.gridCardSelected,
+                { borderColor: isPrimarySelected ? COLORS.accent : COLORS.border }
+              ]}
+              onPress={() => togglePrimary(emotion.primary)}
+              activeOpacity={0.7}
+            >
+              <Text style={[s.gridCardText, isPrimarySelected && s.gridCardTextSelected]}>
+                {emotion.primary}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Sub-emotions (shown below grid for all selected primaries) */}
       {INTEGRATION_EMOTION_SELECTOR.map((emotion) => {
         const primaryLower = emotion.primary.toLowerCase();
         const isPrimarySelected = selected.includes(primaryLower);
 
+        if (!isPrimarySelected) return null;
+
         return (
-          <View key={emotion.primary} style={s.emotionBlock}>
-            {/* Primary emotion chip */}
-            <TouchableOpacity
-              style={[s.chip, isPrimarySelected && s.chipSelected]}
-              onPress={() => togglePrimary(emotion.primary)}
-              activeOpacity={0.7}
-            >
-              <Text style={[s.chipText, isPrimarySelected && s.chipTextSelected]}>
-                {emotion.primary}
-              </Text>
-            </TouchableOpacity>
+          <View key={`subs-${emotion.primary}`} style={s.subSection}>
+            <Text style={s.subSectionTitle}>{emotion.primary}</Text>
+            <View style={s.subRow}>
+              {emotion.subs.map((sub) => {
+                const subLower = sub.toLowerCase();
+                const isSubSelected = selected.includes(subLower);
 
-            {/* Sub-emotion chips (only shown when primary is selected) */}
-            {isPrimarySelected && (
-              <View style={s.subRow}>
-                {emotion.subs.map((sub) => {
-                  const subLower = sub.toLowerCase();
-                  const isSubSelected = selected.includes(subLower);
-
-                  return (
-                    <TouchableOpacity
-                      key={sub}
-                      style={[s.subChip, isSubSelected && s.subChipSelected]}
-                      onPress={() => toggleSub(emotion.primary, sub)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[s.subChipText, isSubSelected && s.subChipTextSelected]}>
-                        {sub}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
+                return (
+                  <TouchableOpacity
+                    key={sub}
+                    style={[s.subChip, isSubSelected && s.subChipSelected]}
+                    onPress={() => toggleSub(emotion.primary, sub)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.subChipText, isSubSelected && s.subChipTextSelected]}>
+                      {sub}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         );
       })}
@@ -94,38 +109,49 @@ export function EmotionSelector({ selected, onChange }: Props) {
 
 const s = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: 20,
   },
-  emotionBlock: {
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  gridCard: {
+    width: '31%',
+    minHeight: 64,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FAFAF8',
+    borderWidth: 1.5,
+  },
+  gridCardSelected: {
+    backgroundColor: COLORS.accent,
+  },
+  gridCardText: {
+    ...OPTION_TEXT,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  gridCardTextSelected: {
+    color: '#FFFFFF',
+  },
+  subSection: {
     gap: 8,
   },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#FAFAF8',
-    borderWidth: 1,
-    borderColor: '#EEEEEC',
-  },
-  chipSelected: {
-    backgroundColor: '#B07FFF',
-    borderColor: '#B07FFF',
-  },
-  chipText: {
-    ...OPTION_TEXT,
-    fontWeight: '500',
-  },
-  chipTextSelected: {
-    color: '#FFFFFF',
+  subSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.accent,
+    marginBottom: 4,
   },
   subRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    paddingLeft: 8,
   },
   subChip: {
     paddingHorizontal: 10,
@@ -138,8 +164,8 @@ const s = StyleSheet.create({
     borderColor: '#EEEEEC',
   },
   subChipSelected: {
-    backgroundColor: '#B07FFF',
-    borderColor: '#B07FFF',
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
   },
   subChipText: {
     ...OPTION_TEXT,

@@ -9,6 +9,21 @@ import type { CreateIntegrationInput } from '@/lib/types';
 import { EmotionSelector } from '@/components/EmotionSelector';
 import { COLORS, CATEGORY_DATA } from '@/lib/theme';
 
+// ---- Progress dots indicator ----
+
+function ProgressDots({ current, total = 3 }: { current: number; total?: number }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 12 }}>
+      {Array.from({ length: total }, (_, i) => {
+        const n = i + 1;
+        if (n < current) return <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.accent + '66' }} />;
+        if (n === current) return <View key={i} style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.accent }} />;
+        return <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.track }} />;
+      })}
+    </View>
+  );
+}
+
 export default function EmotionTagsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -22,13 +37,15 @@ export default function EmotionTagsScreen() {
     carryForward?: string;
   }>();
 
+  console.log('[EmotionTags] Screen loaded with params:', params);
+
   const [emotionTags, setEmotionTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const cat = params.category ?? 'Emotions';
   const accentColor = CATEGORY_DATA[cat]?.color ?? '#9B7FBF';
 
-  async function handleSave(skipTags: boolean = false) {
+  async function handleSave() {
     setSaving(true);
 
     const input: CreateIntegrationInput = {
@@ -37,7 +54,7 @@ export default function EmotionTagsScreen() {
       journey_id: params.journeyId && params.journeyId.length > 0 ? params.journeyId : null,
       free_text: params.freeText || null,
       carry_forward: params.carryForward || null,
-      emotion_tags: skipTags ? [] : emotionTags,
+      emotion_tags: emotionTags,
     };
 
     // Add category-specific questions
@@ -61,6 +78,7 @@ export default function EmotionTagsScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
       </View>
+      <ProgressDots current={3} total={3} />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -73,20 +91,11 @@ export default function EmotionTagsScreen() {
         <EmotionSelector selected={emotionTags} onChange={setEmotionTags} />
       </ScrollView>
 
-      {/* Bottom actions */}
+      {/* Bottom action */}
       <View style={s.footer}>
         <TouchableOpacity
-          style={s.skipBtn}
-          onPress={() => handleSave(true)}
-          disabled={saving}
-          activeOpacity={0.7}
-        >
-          <Text style={s.skipBtnText}>Skip</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           style={[s.saveBtn, { backgroundColor: accentColor }]}
-          onPress={() => handleSave(false)}
+          onPress={handleSave}
           disabled={saving}
           activeOpacity={0.85}
         >
@@ -107,7 +116,7 @@ const s = StyleSheet.create({
     paddingVertical: 12,
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 28, color: '#B07FFF', lineHeight: 32 },
+  backText: { fontSize: 28, color: COLORS.accent, lineHeight: 32 },
 
   body: {
     paddingHorizontal: 20,
@@ -140,29 +149,9 @@ const s = StyleSheet.create({
     paddingBottom: 20,
     borderTopWidth: 1,
     borderTopColor: '#EEEEEC',
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  skipBtn: {
-    flex: 1,
-    borderRadius: 12,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#EEEEEC',
-    backgroundColor: '#FAFAF8',
-  },
-  skipBtnText: {
-    fontFamily: 'Nunito_500Medium',
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#666666',
   },
 
   saveBtn: {
-    flex: 1,
     borderRadius: 12,
     height: 56,
     alignItems: 'center',

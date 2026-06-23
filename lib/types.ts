@@ -211,14 +211,14 @@ export type UpdateIntegrationInput = Partial<CreateIntegrationInput>;
 // ---- Integration emotion taxonomy ----
 
 export const INTEGRATION_EMOTION_SELECTOR = [
-  { primary: 'Angry', subs: ['aggressive','hostile','provoked','mad','enraged','furious','frustrated','annoyed','irritated','critical','sarcastic','skeptical'] },
-  { primary: 'Anticipation', subs: ['excited','passionate','energized','eager','motivated','enthusiastic','interested','curious','impatient','stressed','pressured','overwhelmed'] },
-  { primary: 'Happy', subs: ['optimistic','positive','inspired','confident','proud','self-assured','joyful','ecstatic','delighted','loving','embracing','generous'] },
-  { primary: 'Surprise', subs: ['startled','dismayed','shocked','confused','disillusioned','perplexed','amazed','astonished','awe','disappointed','betrayed'] },
-  { primary: 'Trust', subs: ['grateful','fulfilled','admiration','peaceful','calm','content','accepted','valued','respected','hopeful','longing','expectant'] },
-  { primary: 'Sad', subs: ['ashamed','guilty','remorseful','lonely','isolated','abandoned','depressed','unmotivated','unenthusiastic','hurt','wronged','devastated'] },
-  { primary: 'Fear', subs: ['insecure','inadequate','rejected','anxious','dread','worried','scared','frightened','terrified','nervous','threatened','uneasy'] },
-  { primary: 'Disgust', subs: ['disapproving','judgmental','loathing','awful','detestable','repelled','avoidant','aversion','hesitant','dislike','appalled','revulsion'] },
+  { primary: 'Anger', subs: ['Aggressive','Hostile','Provoked','Mad','Enraged','Furious','Frustrated','Annoyed','Irritated','Critical','Sarcastic','Skeptical'] },
+  { primary: 'Anticipation', subs: ['Excited','Passionate','Energized','Eager','Motivated','Enthusiastic','Interested','Curious','Impatient','Stressed','Pressured','Overwhelmed'] },
+  { primary: 'Happiness', subs: ['Optimistic','Positive','Inspired','Confident','Proud','Self-assured','Joyful','Ecstatic','Delighted','Loving','Embracing','Generous'] },
+  { primary: 'Surprise', subs: ['Startled','Dismayed','Shocked','Confused','Disillusioned','Perplexed','Amazed','Astonished','Awe','Disappointed','Betrayed'] },
+  { primary: 'Trust', subs: ['Grateful','Fulfilled','Admiration','Peaceful','Calm','Content','Accepted','Valued','Respected','Hopeful','Longing','Expectant'] },
+  { primary: 'Sadness', subs: ['Ashamed','Guilty','Remorseful','Lonely','Isolated','Abandoned','Depressed','Unmotivated','Unenthusiastic','Hurt','Wronged','Devastated'] },
+  { primary: 'Fear', subs: ['Insecure','Inadequate','Rejected','Anxious','Dread','Worried','Scared','Frightened','Terrified','Nervous','Threatened','Uneasy'] },
+  { primary: 'Disgust', subs: ['Disapproving','Judgmental','Loathing','Awful','Detestable','Repelled','Avoidant','Aversion','Hesitant','Dislike','Appalled','Revulsion'] },
 ] as const;
 
 export type IntegrationEmotionPrimary = typeof INTEGRATION_EMOTION_SELECTOR[number]['primary'];

@@ -77,3 +77,97 @@ export function BodyFigureEllipses({
   }
   return inner;
 }
+
+// Phase 3 — Composite/aggregated body map rendering
+// Accepts multiple sessions, aggregates body sensations by region, and renders one overlay per region
+// Uses intensity tiers (quiet/present/frequent) to avoid Android rgba bug
+
+type IntensityTier = 'quiet' | 'present' | 'frequent';
+
+interface RegionAggregation {
+  region: string;
+  count: number;
+  tier: IntensityTier;
+}
+
+function aggregateBodySensations(sensations: BodySensation[]): RegionAggregation[] {
+  const regionCounts = new Map<string, number>();
+
+  // Count occurrences per region
+  for (const bs of sensations) {
+    regionCounts.set(bs.region, (regionCounts.get(bs.region) || 0) + 1);
+  }
+
+  if (regionCounts.size === 0) return [];
+
+  // Determine max count for normalization
+  const maxCount = Math.max(...Array.from(regionCounts.values()));
+
+  // Map to tiers
+  const aggregations: RegionAggregation[] = [];
+  for (const [region, count] of regionCounts.entries()) {
+    const normalized = count / maxCount;
+    let tier: IntensityTier;
+    if (normalized >= 0.6) {
+      tier = 'frequent';
+    } else if (normalized >= 0.3) {
+      tier = 'present';
+    } else {
+      tier = 'quiet';
+    }
+    aggregations.push({ region, count, tier });
+  }
+
+  return aggregations.sort((a, b) => b.count - a.count);
+}
+
+function getAggregatedRegionBg(region: string, tier: IntensityTier): string {
+  const baseColor = REGION_CHAKRA_COLORS[region] ?? '#808080';
+  // Use hex-plus-alpha-suffix to avoid Android rgba bug
+  // quiet: ~15% opacity, present: ~30% opacity, frequent: ~45% opacity
+  const alphaSuffix = tier === 'frequent' ? '73' : tier === 'present' ? '4D' : '26';
+  return baseColor + alphaSuffix;
+}
+
+export function BodyFigureAggregated({
+  width,
+  bodySensations,
+  onPress,
+}: {
+  width: number;
+  bodySensations: BodySensation[];
+  onPress?: () => void;
+}) {
+  const height = Math.round(width * 1.5);
+  const aggregations = aggregateBodySensations(bodySensations);
+
+  const inner = (
+    <View style={{ width, height }}>
+      <Image source={require('../assets/body.png')} style={{ width, height }} resizeMode="contain" />
+      {aggregations.flatMap(({ region, tier }) => {
+        const positions = REGION_OVERLAYS[region];
+        if (!positions) return [];
+        const bg = getAggregatedRegionBg(region, tier);
+        return positions.map((pos, idx) => (
+          <View
+            key={`${region}-${idx}`}
+            style={{
+              position: 'absolute',
+              top: pos.top as any,
+              left: pos.left as any,
+              width: pos.width as any,
+              height: pos.height as any,
+              borderRadius: 999,
+              backgroundColor: bg,
+            }}
+          />
+        ));
+      })}
+    </View>
+  );
+
+  if (onPress) {
+    return <TouchableOpacity onPress={onPress} activeOpacity={0.8}>{inner}</TouchableOpacity>;
+  }
+  return inner;
+}

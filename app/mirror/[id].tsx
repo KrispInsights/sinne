@@ -16,9 +16,9 @@ function formatDateRange(mirror: Mirror): string {
   const start = new Date(mirror.period_start + 'T00:00:00');
   const end = new Date(mirror.period_end + 'T00:00:00');
   if (mirror.type === 'journey') {
-    const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return `${startStr} – ${endStr}`;
+    const startStr = start.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    const endStr = end.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    return `${startStr} → ${endStr}`;
   }
   if (mirror.type === 'monthly') {
     return start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -73,9 +73,11 @@ export default function MirrorDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
           <MaterialCommunityIcons name="chevron-left" size={28} color="#1A1A1A" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleCopy} hitSlop={8}>
-          <MaterialCommunityIcons name="content-copy" size={22} color="#666666" />
-        </TouchableOpacity>
+        {mirror.status !== 'error' && (
+          <TouchableOpacity onPress={handleCopy} hitSlop={8}>
+            <MaterialCommunityIcons name="content-copy" size={22} color="#666666" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -99,11 +101,30 @@ export default function MirrorDetailScreen() {
           </View>
         </View>
 
-        <View style={s.textCard}>
-          <Text style={s.bodyText}>{mirror.content}</Text>
-        </View>
-
-        <Text style={s.disclaimer}>Reflection only. The Mirror never gives advice.</Text>
+        {mirror.status === 'error' ? (
+          <View style={s.errorCard}>
+            {mirror.error_reason === 'insufficient_data' ? (
+              <>
+                <Text style={s.errorTitle}>Not enough to reflect on yet.</Text>
+                <Text style={s.errorBody}>
+                  The Mirror still needs more data to work on, so keep on practicing and log your sessions, integrations and follow through on your Journeys, and the Mirror will come back to you.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={s.errorTitle}>Couldn't reflect right now.</Text>
+                <Text style={s.errorBody}>Your sessions are saved, so try again later.</Text>
+              </>
+            )}
+          </View>
+        ) : (
+          <>
+            <View style={s.textCard}>
+              <Text style={s.bodyText}>{mirror.content}</Text>
+            </View>
+            <Text style={s.disclaimer}>Reflection only. The Mirror never gives advice.</Text>
+          </>
+        )}
       </ScrollView>
 
       <Animated.View style={[s.toast, { opacity: toastAnim }]} pointerEvents="none">
@@ -137,6 +158,17 @@ const s = StyleSheet.create({
     borderRadius: 12, padding: 20, marginBottom: 16,
   },
   bodyText: { fontSize: 15, fontWeight: '400', lineHeight: 25.5, color: '#1A1A1A' },
+
+  errorCard: {
+    backgroundColor: '#FFF9F5', borderWidth: 1, borderColor: '#FFE8D9',
+    borderRadius: 12, padding: 24, marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 17, fontWeight: '600', color: '#1A1A1A', marginBottom: 12, lineHeight: 24,
+  },
+  errorBody: {
+    fontSize: 15, fontWeight: '400', color: '#666666', lineHeight: 23,
+  },
 
   disclaimer: { fontSize: 11, fontWeight: '400', color: '#999999', textAlign: 'center' },
 

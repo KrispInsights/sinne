@@ -80,6 +80,31 @@ export default function SignInScreen() {
 
           {/* Form */}
           <View style={styles.form}>
+            {/* Apple Sign-In */}
+            <TouchableOpacity
+              style={styles.appleButton}
+              onPress={() => {}}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.appleButtonText}>Continue with Apple</Text>
+            </TouchableOpacity>
+
+            {/* Google Sign-In */}
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={() => {}}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
             {/* Email */}
             <View style={styles.fieldGroup}>
               <TextInput
@@ -262,5 +287,46 @@ const styles = StyleSheet.create({
   switchText: {
     fontSize: 14,
     color: '#6B5E4E',
+  },
+  appleButton: {
+    backgroundColor: '#000000',
+    borderRadius: 12,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appleButtonText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#FFFFFF',
+  },
+  googleButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EAE4DC',
+    borderRadius: 12,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleButtonText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#3a2e25',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#EAE4DC',
+  },
+  dividerText: {
+    fontSize: 13,
+    color: '#a09580',
+    paddingHorizontal: 12,
   },
 });

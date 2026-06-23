@@ -100,6 +100,7 @@ export interface Integration {
   gratitude_q3: string | null;
   free_text: string | null;
   carry_forward: string | null;
+  emotion_tags?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -119,6 +120,7 @@ export interface Mirror {
   session_count: number;
   integration_count: number;
   status: 'ready' | 'generating' | 'error';
+  error_reason?: 'insufficient_data' | 'api_error';  // Only set when status is 'error'
 }
 
 // Persisted flag for a pending journey Mirror offer the user has not yet acted on
@@ -201,6 +203,22 @@ export interface CreateIntegrationInput {
   gratitude_q3?: string | null;
   free_text?: string | null;
   carry_forward?: string | null;
+  emotion_tags?: string[];
 }
 
 export type UpdateIntegrationInput = Partial<CreateIntegrationInput>;
+
+// ---- Integration emotion taxonomy ----
+
+export const INTEGRATION_EMOTION_SELECTOR = [
+  { primary: 'Angry', subs: ['aggressive','hostile','provoked','mad','enraged','furious','frustrated','annoyed','irritated','critical','sarcastic','skeptical'] },
+  { primary: 'Anticipation', subs: ['excited','passionate','energized','eager','motivated','enthusiastic','interested','curious','impatient','stressed','pressured','overwhelmed'] },
+  { primary: 'Happy', subs: ['optimistic','positive','inspired','confident','proud','self-assured','joyful','ecstatic','delighted','loving','embracing','generous'] },
+  { primary: 'Surprise', subs: ['startled','dismayed','shocked','confused','disillusioned','perplexed','amazed','astonished','awe','disappointed','betrayed'] },
+  { primary: 'Trust', subs: ['grateful','fulfilled','admiration','peaceful','calm','content','accepted','valued','respected','hopeful','longing','expectant'] },
+  { primary: 'Sad', subs: ['ashamed','guilty','remorseful','lonely','isolated','abandoned','depressed','unmotivated','unenthusiastic','hurt','wronged','devastated'] },
+  { primary: 'Fear', subs: ['insecure','inadequate','rejected','anxious','dread','worried','scared','frightened','terrified','nervous','threatened','uneasy'] },
+  { primary: 'Disgust', subs: ['disapproving','judgmental','loathing','awful','detestable','repelled','avoidant','aversion','hesitant','dislike','appalled','revulsion'] },
+] as const;
+
+export type IntegrationEmotionPrimary = typeof INTEGRATION_EMOTION_SELECTOR[number]['primary'];

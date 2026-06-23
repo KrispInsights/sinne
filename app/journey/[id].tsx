@@ -4,9 +4,10 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { getJourneys, getSessions, closeJourney, reopenJourney, deleteJourney, getJourneyMirror } from '@/lib/storage';
+import { getJourneys, getSessions, closeJourney, reopenJourney, deleteJourney, getJourneyMirror, getProfile } from '@/lib/storage';
 import type { Journey, SessionWithCheckin, Mirror } from '@/lib/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { BeforeAfterComparison } from '@/components/BeforeAfterComparison';
 import { COLORS, FONTS, CARD_SHADOW, OPTION_TEXT } from '@/lib/theme';
 
 const STATE_COLORS: Record<string, string> = {
@@ -37,6 +38,7 @@ export default function JourneyDetailScreen() {
   const [journey, setJourney] = useState<Journey | null>(null);
   const [journeySessions, setJourneySessions] = useState<SessionWithCheckin[]>([]);
   const [journeyMirror, setJourneyMirror] = useState<Mirror | null>(null);
+  const [framework, setFramework] = useState<string>('plain');
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [showMirrorOffer, setShowMirrorOffer] = useState(false);
@@ -46,14 +48,15 @@ export default function JourneyDetailScreen() {
     useCallback(() => {
       let cancelled = false;
       (async () => {
-        const [journeys, allSessions, mirror] = await Promise.all([
-          getJourneys(), getSessions(), getJourneyMirror(id),
+        const [journeys, allSessions, mirror, profile] = await Promise.all([
+          getJourneys(), getSessions(), getJourneyMirror(id), getProfile(),
         ]);
         if (cancelled) return;
         const j = journeys.find((j) => j.id === id) ?? null;
         setJourney(j);
         setJourneySessions(allSessions.filter((s) => s.session.journey_id === id));
         setJourneyMirror(mirror);
+        setFramework(profile.vocabulary_framework ?? 'plain');
       })();
       return () => { cancelled = true; };
     }, [id])
@@ -183,6 +186,14 @@ export default function JourneyDetailScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Before/After Comparison (View 4b - Arc View Phase 4b) */}
+        {journeySessions.length >= 6 && (
+          <View style={{ marginBottom: 24 }}>
+            <Text style={s.sectionLabel}>JOURNEY ARC</Text>
+            <BeforeAfterComparison sessions={journeySessions} framework={framework} />
+          </View>
+        )}
+
         {/* New Session button — only shown for active journeys */}
         {journey.status === 'active' && (
           <TouchableOpacity
@@ -275,31 +286,47 @@ export default function JourneyDetailScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* Journey Mirror offer modal */}
+      {/* Journey Mirror offer modal (Phase 5 - includes arc summary if >= 6 sessions) */}
       <Modal transparent visible={showMirrorOffer} animationType="fade" onRequestClose={() => setShowMirrorOffer(false)}>
-        <TouchableOpacity style={s.backdrop} onPress={() => setShowMirrorOffer(false)} activeOpacity={1}>
-          <View style={[s.modalCard, { marginBottom: Math.max(safeBottom + 20, 40) }]}>
-            <Text style={s.modalTitle}>Your journey is now ended.</Text>
-            <Text style={s.modalBody}>
-              You logged {journeySessions.length} session{journeySessions.length !== 1 ? 's' : ''} during "{journey?.name}".
-              {'\n\n'}
-              Would you like to see your reflection—a personalized Mirror that weaves together your inner world across the full arc of your journey?
-            </Text>
-            <TouchableOpacity
-              style={s.modalPrimaryBtn}
-              onPress={() => {
-                setShowMirrorOffer(false);
-                router.push({ pathname: '/mirror', params: { journeyMirrorId: id, journeyMirrorName: journey?.name } } as any);
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={s.modalPrimaryText}>Reflect</Text>
+        <View style={s.backdrop}>
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', paddingBottom: Math.max(safeBottom + 20, 40) }}
+            showsVerticalScrollIndicator={false}
+          >
+            <TouchableOpacity activeOpacity={1} onPress={() => setShowMirrorOffer(false)}>
+              <View style={s.modalCard}>
+                <Text style={s.modalTitle}>Your journey is now ended.</Text>
+                <Text style={s.modalBody}>
+                  You logged {journeySessions.length} session{journeySessions.length !== 1 ? 's' : ''} during "{journey?.name}".
+                </Text>
+
+                {/* Journey Arc Summary (View 5 - Arc View Phase 5) */}
+                {journeySessions.length >= 6 && (
+                  <View style={{ marginTop: 20, marginBottom: 20 }}>
+                    <BeforeAfterComparison sessions={journeySessions} framework={framework} />
+                  </View>
+                )}
+
+                <Text style={s.modalBody}>
+                  Would you like to see your reflection—a personalized Mirror that weaves together your inner world across the full arc of your journey?
+                </Text>
+                <TouchableOpacity
+                  style={s.modalPrimaryBtn}
+                  onPress={() => {
+                    setShowMirrorOffer(false);
+                    router.push({ pathname: '/mirror', params: { journeyMirrorId: id, journeyMirrorName: journey?.name } } as any);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={s.modalPrimaryText}>Reflect</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowMirrorOffer(false)} activeOpacity={0.7}>
+                  <Text style={s.modalCancelText}>Not now</Text>
+                </TouchableOpacity>
+              </View>
             </TouchableOpacity>
-            <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowMirrorOffer(false)} activeOpacity={0.7}>
-              <Text style={s.modalCancelText}>Not now</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
+          </ScrollView>
+        </View>
       </Modal>
 
       {/* Delete confirmation modal */}

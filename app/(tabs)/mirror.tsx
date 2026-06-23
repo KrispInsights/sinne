@@ -65,9 +65,9 @@ function formatDateRange(mirror: Mirror): string {
   const start = new Date(mirror.period_start + 'T00:00:00');
   const end = new Date(mirror.period_end + 'T00:00:00');
   if (mirror.type === 'journey') {
-    const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return `${startStr} – ${endStr}`;
+    const startStr = start.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    const endStr = end.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    return `${startStr} → ${endStr}`;
   }
   if (mirror.type === 'monthly') {
     return start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -203,16 +203,31 @@ export default function MirrorScreen() {
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [unlockStatus, setUnlockStatus] = useState({ unlocked: true, daysSinceSignup: 0, totalSessions: 0, sessionsNeeded: 0 });
   const [pendingJourneyOffer, setPendingJourneyOffer] = useState<JourneyMirrorOffer | null>(null);
+  const [pendingJourneyDateRange, setPendingJourneyDateRange] = useState<string>('');
   const toastAnim = useRef(new Animated.Value(0)).current;
 
   const load = useCallback(async () => {
-    const [m, weekly, monthly, status, pendingOffers] = await Promise.all([
-      getMirrors(), shouldShowWeeklyMirror(), shouldShowMonthlyMirror(), getMirrorUnlockStatus(), getPendingJourneyMirrorOffers(),
+    const [m, weekly, monthly, status, pendingOffers, journeys] = await Promise.all([
+      getMirrors(), shouldShowWeeklyMirror(), shouldShowMonthlyMirror(), getMirrorUnlockStatus(), getPendingJourneyMirrorOffers(), getJourneys(),
     ]);
     setMirrors(m);
     setPromptType(monthly ? 'monthly' : weekly ? 'weekly' : null);
     setUnlockStatus(status);
-    setPendingJourneyOffer(pendingOffers[0] ?? null);
+    const offer = pendingOffers[0] ?? null;
+    setPendingJourneyOffer(offer);
+
+    // Calculate journey date range for the offer banner
+    if (offer) {
+      const journey = journeys.find((j) => j.id === offer.journey_id);
+      if (journey && journey.start_date && journey.duration_days) {
+        const startDate = new Date(journey.start_date + 'T00:00:00');
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + journey.duration_days);
+        const startStr = startDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+        const endStr = endDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+        setPendingJourneyDateRange(`${startStr} → ${endStr}`);
+      }
+    }
   }, []);
 
   useFocusEffect(useCallback(() => {
@@ -275,6 +290,25 @@ export default function MirrorScreen() {
 
     setTimeout(async () => {
       const goals = profile?.goals ?? [];
+
+      // Check for insufficient data: minimum 3 sessions for weekly, 5 for monthly
+      const minSessions = type === 'weekly' ? 3 : 5;
+      if (sessionCount < minSessions) {
+        const errorMirror: Mirror = {
+          ...generatingMirror,
+          generated_at: new Date().toISOString(),
+          content: '',
+          summary: '',
+          status: 'error',
+          error_reason: 'insufficient_data',
+        };
+        await saveMirror(errorMirror);
+        setGenerating(null);
+        await load();
+        router.push({ pathname: '/mirror/[id]', params: { id } } as any);
+        return;
+      }
+
       const content = type === 'weekly' ? buildWeeklyResponse(goals) : buildMonthlyResponse(goals);
       const readyMirror: Mirror = {
         ...generatingMirror,
@@ -301,13 +335,36 @@ export default function MirrorScreen() {
       const journeySessions = allSessions.filter((s) => s.session.journey_id === journeyId);
       const journeyIntegrations = allIntegrations.filter((i) => i.journey_id === journeyId);
 
-      const content = buildJourneyResponse(journeyName, goals);
-
       const journey = journeys.find((j) => j.id === journeyId);
       const today = new Date();
       const todayStr = isoDate(today);
       const periodStart = journey?.start_date ?? todayStr;
       const periodEnd = journey?.closed_at ? journey.closed_at.split('T')[0] : todayStr;
+
+      // Check for insufficient data: minimum 3 sessions for journey mirrors
+      if (journeySessions.length < 3) {
+        const errorMirror: Mirror = {
+          id: uid(),
+          type: 'journey',
+          journey_id: journeyId,
+          journey_name: journeyName,
+          period_start: periodStart,
+          period_end: periodEnd,
+          generated_at: new Date().toISOString(),
+          content: '',
+          summary: '',
+          session_count: journeySessions.length,
+          integration_count: journeyIntegrations.length,
+          status: 'error',
+          error_reason: 'insufficient_data',
+        };
+        await saveMirror(errorMirror);
+        await load();
+        router.push({ pathname: '/mirror/[id]', params: { id: errorMirror.id } } as any);
+        return;
+      }
+
+      const content = buildJourneyResponse(journeyName, goals);
 
       const mirror: Mirror = {
         id: uid(),
@@ -433,6 +490,9 @@ export default function MirrorScreen() {
                   <MaterialCommunityIcons name="eye-outline" size={20} color={COLORS.accent} />
                   <View style={{ flex: 1 }}>
                     <Text style={s.journeyOfferTitle}>{pendingJourneyOffer.journey_name} is complete.</Text>
+                    {pendingJourneyDateRange ? (
+                      <Text style={s.journeyOfferDateRange}>{pendingJourneyDateRange}</Text>
+                    ) : null}
                     <Text style={s.journeyOfferSubtitle}>Tap to reflect on this journey</Text>
                   </View>
                   <Text style={s.journeyOfferReflect}>Reflect →</Text>
@@ -540,6 +600,9 @@ const s = StyleSheet.create({
   },
   journeyOfferTitle: {
     fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: COLORS.text, marginBottom: 2,
+  },
+  journeyOfferDateRange: {
+    fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: '#999999', marginBottom: 4,
   },
   journeyOfferSubtitle: {
     fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: COLORS.textTertiary,

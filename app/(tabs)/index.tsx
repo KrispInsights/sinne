@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, Modal, Animated, StyleSheet, Dimensions, TextInput,
+  View, Text, ScrollView, TouchableOpacity, Modal, Animated, StyleSheet, Dimensions, TextInput, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -10,10 +10,11 @@ import Svg, { Circle, Path, Rect, Defs, LinearGradient as SvgLinearGradient, Sto
 import { Canvas, Circle as SkiaCircle, BlurMask } from '@shopify/react-native-skia';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getSessions, getActiveJourneys, getJourneys, getProfile, getIntegrations, closeJourney, updateJourney, getMirrors } from '@/lib/storage';
+import { getSessions, getActiveJourneys, getJourneys, getProfile, getIntegrations, closeJourney, updateJourney, getMirrors, updateProfile } from '@/lib/storage';
 import { consumeSessionSaved } from '@/lib/events';
 import type { SessionWithCheckin, Journey, Profile, Integration, Mirror } from '@/lib/types';
 import { BodyFigureEllipses, REGION_CHAKRA_COLORS } from '@/components/BodyFigure';
+import { BeforeAfterComparison } from '@/components/BeforeAfterComparison';
 import { COLORS, OPTION_TEXT, getRegionColor, getEmotionColor } from '@/lib/theme';
 
 const IS_DEV = process.env.EXPO_PUBLIC_DEV_MODE === 'true';
@@ -43,6 +44,15 @@ const WELLNESS_TONES: Record<string, string> = {
   shutdown: '#A89ABF',  // Dorsal — Dusty Lavender
 };
 
+// Saturated variants for the Arc chart only — WELLNESS_TONES stays muted
+// for chips/cards elsewhere; the chart needs more contrast since the
+// line and dots ARE the content, not an accent.
+const ARC_CHART_TONES: Record<string, string> = {
+  grounded: '#5A9470',
+  activated: '#C9A53F',
+  shutdown: '#8166B8',
+};
+
 const ACTIVATED_LABEL = '#B8A080';
 
 function getWellnessChipColors(state?: string | null): { bg: string; text: string } {
@@ -58,6 +68,14 @@ function getWellnessDotColor(state?: string | null): string {
   return '#CCCCCC';
 }
 
+// Saturated variant for Arc chart dots
+function getArcDotColor(state?: string | null): string {
+  if (state === 'activated') return ARC_CHART_TONES.activated;
+  if (state === 'shutdown') return ARC_CHART_TONES.shutdown;
+  if (state === 'grounded') return ARC_CHART_TONES.grounded;
+  return '#CCCCCC';
+}
+
 type SomaView = 'arc' | 'calendar' | 'breakdown';
 
 const SOMA_TABS: Array<{ key: SomaView; icon: string }> = [
@@ -66,14 +84,16 @@ const SOMA_TABS: Array<{ key: SomaView; icon: string }> = [
   { key: 'breakdown', icon: 'chart-donut' },
 ];
 
-type SomaFilter = 'week' | 'month' | '30d' | '90d' | 'all';
+type SomaFilter = 'week' | 'month' | '3mo' | '6mo' | 'ytd' | '1yr' | 'all';
 
 const SOMA_FILTERS: Array<{ key: SomaFilter; label: string }> = [
   { key: 'week', label: 'This Week' },
   { key: 'month', label: 'This Month' },
-  { key: '30d', label: 'Past 30 days' },
-  { key: '90d', label: 'Past 90 days' },
-  { key: 'all', label: 'All time' },
+  { key: '3mo', label: 'Past 3 Months' },
+  { key: '6mo', label: 'Past 6 Months' },
+  { key: 'ytd', label: 'Year to Date' },
+  { key: '1yr', label: 'Past Year' },
+  { key: 'all', label: 'All Time' },
 ];
 
 const VOCAB_NAMES: Record<string, Record<string, string>> = {
@@ -265,10 +285,15 @@ function filterByWindow(
     cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMon);
   } else if (filter === 'month') {
     cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
-  } else if (filter === '30d') {
-    cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+  } else if (filter === '3mo') {
+    cutoff = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+  } else if (filter === '6mo') {
+    cutoff = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+  } else if (filter === 'ytd') {
+    cutoff = new Date(now.getFullYear(), 0, 1);
   } else {
-    cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 89);
+    // '1yr'
+    cutoff = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
   }
   cutoff.setHours(0, 0, 0, 0);
   const cutoffIso = cutoff.toISOString().slice(0, 10);
@@ -291,13 +316,9 @@ function computeTopEmotionColors(sessions: SessionWithCheckin[], n: number): str
 }
 
 function computeBreakdown(sessions: SessionWithCheckin[]) {
-  const total = sessions.length;
-  const nsCounts: Record<string, number> = {};
   const tagCounts: Record<string, number> = {};
   const regionCounts: Record<string, number> = {};
   for (const swc of sessions) {
-    const st = swc.checkin?.nervous_system_state;
-    if (st) nsCounts[st] = (nsCounts[st] ?? 0) + 1;
     for (const tag of swc.checkin?.emotion_tags ?? []) {
       tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
     }
@@ -305,12 +326,118 @@ function computeBreakdown(sessions: SessionWithCheckin[]) {
       regionCounts[bs.region] = (regionCounts[bs.region] ?? 0) + 1;
     }
   }
-  const nsPercents = Object.fromEntries(
-    Object.entries(nsCounts).map(([k, v]) => [k, Math.round((v / total) * 100)])
-  );
   const topEmotions = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([tag, count]) => ({ tag, count }));
   const topRegions = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([region, count]) => ({ region, count }));
-  return { nsPercents, topEmotions, topRegions };
+  return { topEmotions, topRegions };
+}
+
+// Compute trend for a tag/region by comparing first half vs second half frequency
+function computeTrend(
+  sessions: SessionWithCheckin[],
+  itemKey: string,
+  type: 'emotion' | 'region'
+): { trend: 'Rising' | 'Easing' | 'Steady'; sparkline: number[] } | null {
+  if (sessions.length < 3) return null;
+
+  const midpoint = Math.floor(sessions.length / 2);
+  const firstHalf = sessions.slice(0, midpoint);
+  const secondHalf = sessions.slice(midpoint);
+
+  let firstCount = 0;
+  let secondCount = 0;
+
+  if (type === 'emotion') {
+    firstCount = firstHalf.filter((s) => s.checkin?.emotion_tags?.includes(itemKey)).length;
+    secondCount = secondHalf.filter((s) => s.checkin?.emotion_tags?.includes(itemKey)).length;
+  } else {
+    firstCount = firstHalf.filter((s) =>
+      s.checkin?.body_sensations?.some((bs) => bs.region === itemKey)
+    ).length;
+    secondCount = secondHalf.filter((s) =>
+      s.checkin?.body_sensations?.some((bs) => bs.region === itemKey)
+    ).length;
+  }
+
+  const firstRate = firstHalf.length > 0 ? firstCount / firstHalf.length : 0;
+  const secondRate = secondHalf.length > 0 ? secondCount / secondHalf.length : 0;
+
+  const diff = secondRate - firstRate;
+  let trend: 'Rising' | 'Easing' | 'Steady';
+  if (Math.abs(diff) < 0.1) {
+    trend = 'Steady';
+  } else if (diff > 0) {
+    trend = 'Rising';
+  } else {
+    trend = 'Easing';
+  }
+
+  // Create a simple 5-point sparkline across the session arc
+  const sparkline: number[] = [];
+  const chunkSize = Math.ceil(sessions.length / 5);
+  for (let i = 0; i < 5; i++) {
+    const chunk = sessions.slice(i * chunkSize, (i + 1) * chunkSize);
+    let count = 0;
+    if (type === 'emotion') {
+      count = chunk.filter((s) => s.checkin?.emotion_tags?.includes(itemKey)).length;
+    } else {
+      count = chunk.filter((s) =>
+        s.checkin?.body_sensations?.some((bs) => bs.region === itemKey)
+      ).length;
+    }
+    sparkline.push(chunk.length > 0 ? count / chunk.length : 0);
+  }
+
+  return { trend, sparkline };
+}
+
+// Create adaptive time buckets for visualizations
+function createTimeBuckets(sessions: SessionWithCheckin[], maxBuckets: number = 16): Array<{
+  sessions: SessionWithCheckin[];
+  startDate: string;
+  endDate: string;
+}> {
+  if (sessions.length === 0) return [];
+
+  const sorted = [...sessions].sort((a, b) =>
+    a.session.created_at.localeCompare(b.session.created_at)
+  );
+
+  const firstDate = new Date(sorted[0].session.created_at);
+  const lastDate = new Date(sorted[sorted.length - 1].session.created_at);
+  const spanDays = Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+  // Determine bucket size: aim for 12-16 buckets
+  const targetBuckets = Math.min(maxBuckets, Math.max(sessions.length, 12));
+  const bucketDays = Math.max(1, Math.ceil(spanDays / targetBuckets));
+
+  const buckets: Array<{
+    sessions: SessionWithCheckin[];
+    startDate: string;
+    endDate: string;
+  }> = [];
+
+  let currentBucketStart = new Date(firstDate);
+
+  while (currentBucketStart <= lastDate) {
+    const bucketEnd = new Date(currentBucketStart);
+    bucketEnd.setDate(bucketEnd.getDate() + bucketDays - 1);
+
+    const bucketSessions = sorted.filter((s) => {
+      const d = new Date(s.session.created_at);
+      return d >= currentBucketStart && d <= bucketEnd;
+    });
+
+    buckets.push({
+      sessions: bucketSessions,
+      startDate: currentBucketStart.toISOString().slice(0, 10),
+      endDate: bucketEnd.toISOString().slice(0, 10),
+    });
+
+    currentBucketStart = new Date(bucketEnd);
+    currentBucketStart.setDate(currentBucketStart.getDate() + 1);
+  }
+
+  return buckets.filter((b) => b.sessions.length > 0);
 }
 
 // ---- Calendar grid ----
@@ -321,6 +448,19 @@ const CAL_CELL_SIZE = 32;
 
 const JOURNEY_BAR_H = 4;
 const JOURNEY_BAR_GAP = 3;
+
+// Get dominant nervous system state for a day (most recent session wins)
+function getDominantStateForDay(daySessions: SessionWithCheckin[]): string | null {
+  if (daySessions.length === 0) return null;
+
+  // Sort by created_at descending (most recent first)
+  const sorted = [...daySessions].sort((a, b) =>
+    b.session.created_at.localeCompare(a.session.created_at)
+  );
+
+  // Return the state from the most recent session
+  return sorted[0].checkin?.nervous_system_state ?? null;
+}
 
 function CalendarGrid({
   year, month, cellSize, sessions, integrations, onDayPress,
@@ -386,6 +526,15 @@ function CalendarGrid({
             const isToday = iso === todayIso;
             const isPast = iso < todayIso;
 
+            // Get dominant NS state for background color (View 6 - Arc View Phase 2)
+            const dominantState = hasSession ? getDominantStateForDay(daySessions) : null;
+            let cellBgColor: string | undefined;
+            if (dominantState && !isToday) {
+              // Use wellness tones at very low opacity for background
+              const stateColor = WELLNESS_TONES[dominantState];
+              cellBgColor = stateColor ? `${stateColor}15` : undefined; // ~8% opacity
+            }
+
             const numColor = isToday ? '#FFFFFF'
               : hasSession ? '#1A1A1A'
               : isPast ? '#CCCCCC'
@@ -399,6 +548,7 @@ function CalendarGrid({
                   borderRightWidth: isLast ? 0 : StyleSheet.hairlineWidth,
                   borderRightColor: '#F0F0F0',
                   alignItems: 'center', paddingTop: 6,
+                  backgroundColor: cellBgColor,
                 }}
                 onPress={() => {
                   if (hasSession || hasInteg) {
@@ -555,6 +705,7 @@ function buildSmoothPath(points: Array<{ x: number; y: number }>): string {
 function ArcChart({ sessions, integrations, framework, showInfoTooltip, setShowInfoTooltip }: { sessions: SessionWithCheckin[]; integrations: Integration[]; framework: string; showInfoTooltip: boolean; setShowInfoTooltip: (show: boolean) => void }) {
   const [rowW, setRowW] = useState(SCREEN_W - 80);
   const [selected, setSelected] = useState<number | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
   const CHART_H = 200;
   const DATE_LABEL_H = 20;
@@ -601,7 +752,7 @@ function ArcChart({ sessions, integrations, framework, showInfoTooltip, setShowI
     return {
       x: 24 + i * PX,
       y: avgY,
-      dotColor: getWellnessDotColor(primarySession.checkin?.nervous_system_state),
+      dotColor: getArcDotColor(primarySession.checkin?.nervous_system_state),
       color: getDominantEmotionColor(primarySession),
       hasInteg: integDateSet.has(dateKey),
       dateLabel: new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -651,7 +802,13 @@ function ArcChart({ sessions, integrations, framework, showInfoTooltip, setShowI
           </View>
 
           {/* Scrollable chart */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} onLayout={(e) => setRowW(e.nativeEvent.layout.width)}>
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            onLayout={(e) => setRowW(e.nativeEvent.layout.width)}
+            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+          >
             <View style={{ width: chartW }}>
               <Svg width={chartW} height={CHART_H + DATE_LABEL_H}>
                 {/* Chart background */}
@@ -676,8 +833,8 @@ function ArcChart({ sessions, integrations, framework, showInfoTooltip, setShowI
                   </SvgText>
                 ))}
 
-                {/* Connecting line (Section 2c: reduced opacity) */}
-                <Path d={linePath} stroke="#B07FFF" strokeOpacity={0.22} strokeWidth={1} fill="none" strokeLinecap="round" />
+                {/* Connecting line */}
+                <Path d={linePath} stroke="#B07FFF" strokeOpacity={0.5} strokeWidth={2} fill="none" strokeLinecap="round" />
 
                 {/* Data points — 5-layer constellation (Section 2b) */}
                 {points.map((p, i) => {
@@ -840,39 +997,61 @@ function computeShiftStats(sessions: SessionWithCheckin[]) {
 
   let shiftsTotal = 0;
   let shiftsPositive = 0;
-  const practiceShifts: Record<string, { total: number; grounded: number }> = {};
 
   sessions.forEach((swc) => {
     const before = swc.checkin?.nervous_system_state_before;
     const after = swc.checkin?.nervous_system_state;
-    const practice = swc.session.practice_type?.split(':')[0].trim() ?? 'Other';
 
     if (before && after && before !== after) {
       shiftsTotal++;
       const isPositive = (stateRank[after] ?? 0) > (stateRank[before] ?? 0);
       if (isPositive) shiftsPositive++;
     }
-
-    if (after) {
-      if (!practiceShifts[practice]) practiceShifts[practice] = { total: 0, grounded: 0 };
-      practiceShifts[practice].total++;
-      if (after === 'grounded') practiceShifts[practice].grounded++;
-    }
   });
 
   const positiveShiftRate = shiftsTotal > 0 ? Math.round((shiftsPositive / shiftsTotal) * 100) : null;
 
-  const practiceCorrelation = Object.entries(practiceShifts)
-    .filter(([, v]) => v.total >= 2) // only show practices with 2+ sessions
-    .map(([practice, v]) => ({
-      practice,
-      pct: Math.round((v.grounded / v.total) * 100),
-      total: v.total,
-      color: getPracticeTypeColor(practice),
-    }))
-    .sort((a, b) => b.pct - a.pct);
+  return { positiveShiftRate };
+}
 
-  return { positiveShiftRate, practiceCorrelation };
+// Phase 2c — Then → Now comparator data function
+function computeThenNow(sessions: SessionWithCheckin[]): {
+  then: Record<string, number>; // percent 0-100 per state, first half
+  now: Record<string, number>;  // percent 0-100 per state, second half
+  shiftRate: number | null;     // existing positiveShiftRate logic, folded in here
+} | null {
+  const withState = sessions.filter((s) => s.checkin?.nervous_system_state);
+  if (withState.length < 4) return null; // not enough to split meaningfully
+
+  const sorted = [...withState].sort((a, b) =>
+    a.session.created_at.localeCompare(b.session.created_at)
+  );
+  const mid = Math.floor(sorted.length / 2);
+  const firstHalf = sorted.slice(0, mid);
+  const secondHalf = sorted.slice(mid);
+
+  function pctByState(group: SessionWithCheckin[]): Record<string, number> {
+    const counts: Record<string, number> = { grounded: 0, activated: 0, shutdown: 0 };
+    group.forEach((s) => {
+      const st = s.checkin?.nervous_system_state;
+      if (st) counts[st] = (counts[st] ?? 0) + 1;
+    });
+    const total = group.length || 1;
+    return {
+      grounded: Math.round((counts.grounded / total) * 100),
+      activated: Math.round((counts.activated / total) * 100),
+      shutdown: Math.round((counts.shutdown / total) * 100),
+    };
+  }
+
+  // Reuse existing shift-rate logic from computeShiftStats
+  const { positiveShiftRate } = computeShiftStats(sessions);
+
+  return {
+    then: pctByState(firstHalf),
+    now: pctByState(secondHalf),
+    shiftRate: positiveShiftRate,
+  };
 }
 
 function BodyHeatMapSkia({
@@ -947,6 +1126,151 @@ function BodyHeatMapSkia({
   );
 }
 
+// Trend Row component with sparkline
+function TrendRow({
+  label,
+  count,
+  trend,
+  sparkline,
+  color,
+  sparklineMax,
+}: {
+  label: string;
+  count: number;
+  trend: 'Rising' | 'Easing' | 'Steady' | null;
+  sparkline: number[] | null;
+  color: string;
+  sparklineMax: number;
+}) {
+  const maxSparklineValue = sparklineMax;
+
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color, marginRight: 8 }} />
+          <Text style={{ fontSize: 14, fontWeight: '500', color: '#1A1A1A', flex: 1 }} numberOfLines={1}>
+            {label}
+          </Text>
+        </View>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: '#666666', marginLeft: 8 }}>
+          {count}
+        </Text>
+        {trend && (
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '500',
+              color: trend === 'Rising' ? '#7AAE8A' : trend === 'Easing' ? '#B5736A' : '#999999',
+              marginLeft: 8,
+              minWidth: 50,
+              textAlign: 'right',
+            }}
+          >
+            {trend}
+          </Text>
+        )}
+      </View>
+
+      {/* Sparkline */}
+      {sparkline && (
+        <View style={{ marginLeft: 16 }}>
+          <Svg width={120} height={20}>
+            <Path
+              d={sparkline.map((val, i) => {
+                const x = (i / (sparkline.length - 1)) * 120;
+                const y = 20 - (val / maxSparklineValue) * 18;
+                return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+              }).join(' ')}
+              stroke={color}
+              strokeWidth={1.5}
+              fill="none"
+              opacity={0.6}
+            />
+          </Svg>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// Phase 2c — Then → Now comparator component
+function ThenNowComparator({
+  thenNowData,
+  framework,
+}: {
+  thenNowData: {
+    then: Record<string, number>;
+    now: Record<string, number>;
+    shiftRate: number | null;
+  };
+  framework: string;
+}) {
+  const { then, now, shiftRate } = thenNowData;
+
+  // Determine dominant state for each half
+  const getDominant = (pcts: Record<string, number>): string => {
+    const entries = Object.entries(pcts);
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries[0][0];
+  };
+
+  const thenDominant = getDominant(then);
+  const nowDominant = getDominant(now);
+
+  // Framework-aware state names
+  const thenName = getStateName(framework, thenDominant);
+  const nowName = getStateName(framework, nowDominant);
+
+  // Narrative text
+  let narrative: string;
+  if (thenDominant === nowDominant) {
+    narrative = `Steady around ${thenName.toLowerCase()} across this period.`;
+  } else {
+    narrative = `Mostly ${thenName.toLowerCase()} early on, mostly ${nowName.toLowerCase()} more recently.`;
+  }
+
+  // Render stacked horizontal bars
+  const renderBar = (pcts: Record<string, number>, label: string) => {
+    const groundedW = pcts.grounded;
+    const activatedW = pcts.activated;
+    const shutdownW = pcts.shutdown;
+
+    return (
+      <View style={{ marginBottom: 8 }}>
+        <Text style={s.bkLabel}>{label}</Text>
+        <View style={{ flexDirection: 'row', height: 24, borderRadius: 4, overflow: 'hidden', marginTop: 4 }}>
+          {groundedW > 0 && (
+            <View style={{ width: `${groundedW}%`, backgroundColor: WELLNESS_TONES.grounded }} />
+          )}
+          {activatedW > 0 && (
+            <View style={{ width: `${activatedW}%`, backgroundColor: WELLNESS_TONES.activated }} />
+          )}
+          {shutdownW > 0 && (
+            <View style={{ width: `${shutdownW}%`, backgroundColor: WELLNESS_TONES.shutdown }} />
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <View style={s.bkSection}>
+      <Text style={s.bkLabel}>THEN → NOW</Text>
+      <View style={{ marginTop: 12 }}>
+        {renderBar(then, 'THEN')}
+        {renderBar(now, 'NOW')}
+      </View>
+      <Text style={s.bkNarrativeText}>{narrative}</Text>
+      {shiftRate !== null && (
+        <Text style={[s.bkNarrativeText, { marginTop: 8 }]}>
+          {shiftRate}% of sessions in this period ended in a better state than they started.
+        </Text>
+      )}
+    </View>
+  );
+}
+
 function computeEmotionFrequency(sessions: SessionWithCheckin[]): Array<{
   tag: string;
   count: number;
@@ -968,25 +1292,6 @@ function computeEmotionFrequency(sessions: SessionWithCheckin[]): Array<{
     });
 }
 
-function computeIntegrationRate(
-  sessions: SessionWithCheckin[],
-  integrations: Integration[],
-): { rate: number; withInteg: number; total: number } {
-  const total = sessions.length;
-  if (total === 0) return { rate: 0, withInteg: 0, total: 0 };
-  // Count sessions that have at least one integration note logged after them
-  let withInteg = 0;
-  sessions.forEach((swc) => {
-    const sessionTime = new Date(swc.session.created_at).getTime();
-    const hasInteg = integrations.some((integ) => {
-      const integTime = new Date(integ.created_at || integ.note_date).getTime();
-      return integTime > sessionTime;
-    });
-    if (hasInteg) withInteg++;
-  });
-  return { rate: Math.round((withInteg / total) * 100), withInteg, total };
-}
-
 function BreakdownView({
   sessions,
   framework,
@@ -997,41 +1302,18 @@ function BreakdownView({
   integrations: Integration[];
 }) {
   if (sessions.length === 0) return <Text style={{ fontSize: 13, color: '#999999', textAlign: 'center', paddingTop: 20 }}>No sessions yet.</Text>;
-  const { nsPercents, topEmotions, topRegions } = computeBreakdown(sessions);
-  const { positiveShiftRate, practiceCorrelation } = computeShiftStats(sessions);
+  const { topEmotions, topRegions } = computeBreakdown(sessions);
   const emotionFrequency = computeEmotionFrequency(sessions);
-  const nsOrdered = ['grounded', 'activated', 'shutdown'];
-  const vocabMap = VOCAB_NAMES[framework] ?? VOCAB_NAMES.plain;
   const maxCount = topRegions[0]?.count ?? 1;
   const featuredEmotion = topEmotions[0] ?? null;
+  const thenNowData = computeThenNow(sessions);
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
-      {/* Nervous system cards (Section 3a) */}
-      <View style={s.bkSection}>
-        <View style={s.bkNsCards}>
-          {nsOrdered.map((key) => {
-            const pct = nsPercents[key] ?? 0;
-            const tone = WELLNESS_TONES[key];
-            return (
-              <View key={key} style={[s.bkNsCard, {
-                backgroundColor: tone + '1A',
-                borderLeftWidth: 3,
-                borderLeftColor: tone,
-              }]}>
-                <View style={s.bkNsCardHeader}>
-                  <Text style={s.bkNsCardName}>{getStateName(framework, key)}</Text>
-                </View>
-                <Text style={[s.bkNsCardPct, { color: tone }]}>{pct}%</Text>
-                {/* Progress bar */}
-                <View style={{ width: '100%', height: 3, borderRadius: 2, backgroundColor: tone + '20', marginTop: 8 }}>
-                  <View style={{ width: `${pct}%`, height: 3, borderRadius: 2, backgroundColor: tone, opacity: 0.7 }} />
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      </View>
+      {/* Then → Now comparator (Phase 2c) */}
+      {thenNowData && (
+        <ThenNowComparator thenNowData={thenNowData} framework={framework} />
+      )}
 
       {/* Dominant emotion (Section 3b) */}
       {featuredEmotion && (
@@ -1057,50 +1339,66 @@ function BreakdownView({
           <View style={{ alignItems: 'center', marginBottom: 16 }}>
             <BodyHeatMapSkia topRegions={topRegions} maxCount={maxCount} />
           </View>
+
+          {/* Body Region Trend Rows (View 2 - Arc View Phase 1b) */}
+          <View style={{ marginTop: 8 }}>
+            {(() => {
+              // Compute shared sparkline max for all region rows (Phase 2b)
+              const regionSparklineMax = Math.max(
+                ...topRegions.map(({ region }) => {
+                  const t = computeTrend(sessions, region, 'region');
+                  return t ? Math.max(...t.sparkline) : 0;
+                }),
+                0.01
+              );
+              return topRegions.map(({ region, count }) => {
+                const trendData = computeTrend(sessions, region, 'region');
+                return (
+                  <TrendRow
+                    key={region}
+                    label={region}
+                    count={count}
+                    trend={trendData?.trend ?? null}
+                    sparkline={trendData?.sparkline ?? null}
+                    color={getRegionColor(region)}
+                    sparklineMax={regionSparklineMax}
+                  />
+                );
+              });
+            })()}
+          </View>
         </View>
       )}
 
-      {/* Positive shift rate hero card (Section 10b) */}
-      {positiveShiftRate !== null && (
+      {/* Top Emotions Trend Rows (View 2 - Arc View Phase 1b) */}
+      {topEmotions.length > 0 && (
         <View style={s.bkSection}>
-          <Text style={s.bkLabel}>SESSION SHIFT</Text>
-          <View style={s.bkShiftCard}>
-            <ExpoLinearGradient
-              colors={['rgba(143,174,154,0.12)', 'rgba(143,174,154,0.03)']}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <Text style={s.bkShiftPct}>{positiveShiftRate}%</Text>
-            <Text style={s.bkShiftLabel}>of sessions ended in a better state than they started</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Practice-to-state correlation (Section 10c) */}
-      {practiceCorrelation.length > 0 && (
-        <View style={[s.bkSection, { marginTop: 16 }]}>
-          <Text style={s.bkLabel}>BY PRACTICE TYPE</Text>
-          <View style={s.bkPracticeList}>
-            {practiceCorrelation.map(({ practice, pct, total, color }) => (
-              <View key={practice} style={s.bkPracticeRow}>
-                <View style={s.bkPracticeLeft}>
-                  <View style={[s.bkPracticeDot, { backgroundColor: color }]} />
-                  <Text style={s.bkPracticeName} numberOfLines={1}>{practice}</Text>
-                </View>
-                <View style={s.bkPracticeBarWrap}>
-                  <View style={s.bkPracticeBarBg}>
-                    <View style={[s.bkPracticeBarFill, {
-                      width: `${pct}%` as any,
-                      backgroundColor: WELLNESS_TONES.grounded,
-                    }]} />
-                  </View>
-                  <Text style={s.bkPracticePct}>{pct}%</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-          <Text style={s.bkPracticeFootnote}>% of sessions ending grounded · min. 2 sessions</Text>
+          <Text style={s.bkLabel}>TOP EMOTIONS</Text>
+          {(() => {
+            // Compute shared sparkline max for all emotion rows (Phase 2b)
+            const emotionSparklineMax = Math.max(
+              ...topEmotions.map(({ tag }) => {
+                const t = computeTrend(sessions, tag, 'emotion');
+                return t ? Math.max(...t.sparkline) : 0;
+              }),
+              0.01
+            );
+            return topEmotions.map(({ tag, count }) => {
+              const trendData = computeTrend(sessions, tag, 'emotion');
+              const emotionColors = getEmotionColor(tag);
+              return (
+                <TrendRow
+                  key={tag}
+                  label={tag.charAt(0).toUpperCase() + tag.slice(1)}
+                  count={count}
+                  trend={trendData?.trend ?? null}
+                  sparkline={trendData?.sparkline ?? null}
+                  color={emotionColors.text}
+                  sparklineMax={emotionSparklineMax}
+                />
+              );
+            });
+          })()}
         </View>
       )}
 
@@ -1141,43 +1439,13 @@ function BreakdownView({
         </View>
       )}
 
-      {/* Integration rate */}
-      {(() => {
-        const { rate, withInteg, total } = computeIntegrationRate(sessions, integrations);
-        if (total < 2) return null;
-        // Dot row — one dot per session, filled if integration exists after it
-        const dots = sessions.slice(0, 10).map((swc, i) => {
-          const sessionTime = new Date(swc.session.created_at).getTime();
-          const hasInteg = integrations.some((integ) => {
-            const integTime = new Date(integ.created_at || integ.note_date).getTime();
-            return integTime > sessionTime;
-          });
-          return hasInteg;
-        });
-        return (
-          <View style={s.bkSection}>
-            <Text style={s.bkLabel}>Integration</Text>
-            <Text style={s.bkNarrativeText}>
-              {`You integrated after ${withInteg} of your last ${total} sessions.`}
-            </Text>
-            <View style={s.integDotRow}>
-              {dots.map((filled, i) => (
-                <View
-                  key={i}
-                  style={[
-                    s.integDot,
-                    {
-                      backgroundColor: filled
-                        ? WELLNESS_TONES.grounded
-                        : COLORS.track,
-                    },
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
-        );
-      })()}
+      {/* Before/After Comparison (View 4a - Arc View Phase 4a) */}
+      {sessions.length >= 6 && (
+        <View style={s.bkSection}>
+          <Text style={s.bkLabel}>FIRST HALF VS SECOND HALF</Text>
+          <BeforeAfterComparison sessions={sessions} framework={framework} />
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -1677,7 +1945,7 @@ export default function HomeScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [somaView, setSomaView] = useState<SomaView>('arc');
-  const [somaFilter, setSomaFilter] = useState<SomaFilter>('all');
+  const [somaFilter, setSomaFilter] = useState<SomaFilter>('month');
   const [showFilterPicker, setShowFilterPicker] = useState(false);
   const [detailSessions, setDetailSessions] = useState<SessionWithCheckin[]>([]);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
@@ -1819,8 +2087,43 @@ export default function HomeScreen() {
             <View style={s.greetingRow}>
               <Text style={s.greeting}>{getGreeting(userName)}</Text>
               {IS_DEV && (
-                <View style={s.devBadge}>
-                  <Text style={s.devBadgeText}>DEV</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={s.devBadge}>
+                    <Text style={s.devBadgeText}>DEV</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Alert.alert(
+                        'Reset Onboarding',
+                        'This will reset your onboarding and restart the flow. Your sessions and data will not be deleted. Continue?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Continue',
+                            style: 'destructive',
+                            onPress: async () => {
+                              const profile = await getProfile();
+                              if (profile) {
+                                await updateProfile({
+                                  ...profile,
+                                  onboarding_complete: false,
+                                  vocabulary_preference: null,
+                                  practices: [],
+                                  goals: [],
+                                });
+                              }
+                              router.push('/onboarding' as any);
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                    hitSlop={8}
+                  >
+                    <Text style={{ fontSize: 10, fontWeight: '500', color: '#FF6B6B', textDecorationLine: 'underline' }}>
+                      Reset onboarding
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
@@ -1872,6 +2175,61 @@ export default function HomeScreen() {
                   )}
                 </View>
               </View>
+            )}
+
+            {/* ---- Last session card ---- */}
+            {lastSession && (
+              <TouchableOpacity
+                style={[s.card, CARD_SHADOW, s.lastSessionCard]}
+                onPress={() => router.push({ pathname: '/session/[id]', params: { id: lastSession.session.id } } as any)}
+                activeOpacity={0.85}
+              >
+                <Text style={s.lastSessionHeader}>
+                  LAST SESSION  ·  {formatLastSessionDate(lastSession.session.created_at)}
+                  {lastSession.session.duration_minutes ? `  ·  ${lastSession.session.duration_minutes} min` : ''}
+                </Text>
+                <View style={s.lastSessionBody}>
+                  <Text style={s.lastSessionTitle}>{lastSession.session.practice_type || 'Session'}</Text>
+                  <View style={s.lastSessionColumns}>
+                    <View style={s.lastSessionLeft}>
+                      {lastNsName ? (
+                        <View style={[s.wellnessChip, { backgroundColor: lastWellnessChip.bg, alignSelf: 'flex-start' }]}>
+                          <Text style={[s.wellnessChipText, { color: lastWellnessChip.text }]}>{lastNsName.charAt(0).toUpperCase() + lastNsName.slice(1)}</Text>
+                        </View>
+                      ) : null}
+                      {lastTopEmotions.map((tag) => (
+                        <View key={tag} style={[s.emotionChip, { backgroundColor: (EMOTION_TAG_COLOR[tag] ?? '#9B7FBF') + '26', alignSelf: 'flex-start', marginTop: 6 }]}>
+                          <Text style={[s.emotionChipText, { color: EMOTION_TAG_COLOR[tag] ?? '#9B7FBF' }]}>
+                            {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                    <View style={[s.lastSessionRight, {
+                      backgroundColor: COLORS.accentTint,
+                      borderRadius: 16,
+                      padding: 8,
+                      alignItems: 'center',
+                    }]}>
+                      <BodyFigureEllipses width={80} bodySensations={lastSession.checkin?.body_sensations ?? []} />
+                      {/* Region dot row below body figure (Section 5) */}
+                      {(lastSession.checkin?.body_sensations ?? []).length > 0 && (
+                        <View style={{ flexDirection: 'row', gap: 4, marginTop: 6, justifyContent: 'center' }}>
+                          {(lastSession.checkin?.body_sensations ?? []).slice(0, 3).map((bs) => (
+                            <View
+                              key={bs.region}
+                              style={{
+                                width: 6, height: 6, borderRadius: 3,
+                                backgroundColor: getRegionColor(bs.region),
+                              }}
+                            />
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
             )}
 
             {/* ---- YOUR SOMA CARD ---- */}
@@ -1985,61 +2343,6 @@ export default function HomeScreen() {
                 );
               })()}
             </View>
-
-            {/* ---- Last session card ---- */}
-            {lastSession && (
-              <TouchableOpacity
-                style={[s.card, CARD_SHADOW, s.lastSessionCard]}
-                onPress={() => router.push({ pathname: '/session/[id]', params: { id: lastSession.session.id } } as any)}
-                activeOpacity={0.85}
-              >
-                <Text style={s.lastSessionHeader}>
-                  LAST SESSION  ·  {formatLastSessionDate(lastSession.session.created_at)}
-                  {lastSession.session.duration_minutes ? `  ·  ${lastSession.session.duration_minutes} min` : ''}
-                </Text>
-                <View style={s.lastSessionBody}>
-                  <Text style={s.lastSessionTitle}>{lastSession.session.practice_type || 'Session'}</Text>
-                  <View style={s.lastSessionColumns}>
-                    <View style={s.lastSessionLeft}>
-                      {lastNsName ? (
-                        <View style={[s.wellnessChip, { backgroundColor: lastWellnessChip.bg, alignSelf: 'flex-start' }]}>
-                          <Text style={[s.wellnessChipText, { color: lastWellnessChip.text }]}>{lastNsName.charAt(0).toUpperCase() + lastNsName.slice(1)}</Text>
-                        </View>
-                      ) : null}
-                      {lastTopEmotions.map((tag) => (
-                        <View key={tag} style={[s.emotionChip, { backgroundColor: (EMOTION_TAG_COLOR[tag] ?? '#9B7FBF') + '26', alignSelf: 'flex-start', marginTop: 6 }]}>
-                          <Text style={[s.emotionChipText, { color: EMOTION_TAG_COLOR[tag] ?? '#9B7FBF' }]}>
-                            {tag.charAt(0).toUpperCase() + tag.slice(1)}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                    <View style={[s.lastSessionRight, {
-                      backgroundColor: COLORS.accentTint,
-                      borderRadius: 16,
-                      padding: 8,
-                      alignItems: 'center',
-                    }]}>
-                      <BodyFigureEllipses width={80} bodySensations={lastSession.checkin?.body_sensations ?? []} />
-                      {/* Region dot row below body figure (Section 5) */}
-                      {(lastSession.checkin?.body_sensations ?? []).length > 0 && (
-                        <View style={{ flexDirection: 'row', gap: 4, marginTop: 6, justifyContent: 'center' }}>
-                          {(lastSession.checkin?.body_sensations ?? []).slice(0, 3).map((bs) => (
-                            <View
-                              key={bs.region}
-                              style={{
-                                width: 6, height: 6, borderRadius: 3,
-                                backgroundColor: getRegionColor(bs.region),
-                              }}
-                            />
-                          ))}
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            )}
           </View>
         ) : (
           <View style={s.emptyContainer}>
@@ -2412,12 +2715,6 @@ const s = StyleSheet.create({
     fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
     textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10,
   },
-  // NS state cards (3 side-by-side)
-  bkNsCards: { flexDirection: 'row', gap: 8 },
-  bkNsCard: { flex: 1, borderRadius: 16, padding: 14, alignItems: 'center' },
-  bkNsCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  bkNsCardName: { fontSize: 13, fontWeight: '400', color: '#999999', fontFamily: 'Nunito_400Regular', textAlign: 'center' },
-  bkNsCardPct: { fontSize: 32, fontFamily: 'DMSerifDisplay_400Regular', lineHeight: 36, textAlign: 'center' },
   // Dominant emotion
   bkDominantCard: { backgroundColor: '#B07FFF14', borderRadius: 12, padding: 16, alignItems: 'center' },
   bkDominantEmotion: { fontSize: 32, fontFamily: 'DMSerifDisplay_400Regular', color: '#B07FFF', textTransform: 'capitalize', textAlign: 'center' },
@@ -2426,38 +2723,6 @@ const s = StyleSheet.create({
   regionListDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
   regionListName: { flex: 1, fontFamily: 'Nunito_400Regular', fontSize: 14, color: '#666666', textTransform: 'capitalize' },
   regionListCount: { fontFamily: 'Nunito_400Regular', fontSize: 14, color: '#999999' },
-  // Shift stats (Section 10)
-  bkShiftCard: {
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    overflow: 'hidden',
-    borderLeftWidth: 3,
-    borderLeftColor: WELLNESS_TONES.grounded,
-  },
-  bkShiftPct: {
-    fontFamily: 'DMSerifDisplay_400Regular',
-    fontSize: 48,
-    color: COLORS.grounded,
-    lineHeight: 52,
-    marginBottom: 6,
-  },
-  bkShiftLabel: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  bkPracticeList: { gap: 10 },
-  bkPracticeRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  bkPracticeLeft: { flexDirection: 'row', alignItems: 'center', gap: 6, width: 100 },
-  bkPracticeDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  bkPracticeName: { fontSize: 12, color: COLORS.textSecondary, flex: 1 },
-  bkPracticeBarWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  bkPracticeBarBg: { flex: 1, height: 4, borderRadius: 2, backgroundColor: COLORS.track },
-  bkPracticeBarFill: { height: 4, borderRadius: 2 },
-  bkPracticePct: { fontSize: 12, color: COLORS.textTertiary, minWidth: 30, textAlign: 'right' },
-  bkPracticeFootnote: { fontSize: 10, color: COLORS.textQuaternary, marginTop: 8, fontStyle: 'italic' },
   emotionBubbleWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2477,17 +2742,6 @@ const s = StyleSheet.create({
     color: COLORS.textSecondary,
     marginBottom: 4,
     lineHeight: 18,
-  },
-  integDotRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 10,
-    flexWrap: 'wrap',
-  },
-  integDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
   },
 
   // Session detail sheet

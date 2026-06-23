@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Modal, FlatList, KeyboardAvoidingView, Platform, Switch,
+  StyleSheet, Modal, FlatList, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -109,19 +109,15 @@ export default function OnboardingScreen() {
   const [countrySearch, setCountrySearch] = useState('');
   const [countryModalOpen, setCountryModalOpen] = useState(false);
 
-  // Step 2
-  const [experienceLevel, setExperienceLevel] = useState('');
+  // Step 2 (merged Practices & Goals)
   const [practices, setPractices] = useState<string[]>([]);
   const [subtypes, setSubtypes] = useState<Record<string, string[]>>({});
-
-  // Step 3
   const [goals, setGoals] = useState<string[]>([]);
 
-  // Step 4
+  // Step 3 (Vocabulary)
   const [vocab, setVocab] = useState<Profile['vocabulary_framework']>('plain');
-  const [chakra, setChakra] = useState(false);
 
-  // Step 5 (journey)
+  // Step 4 (Journey - skippable)
   const [journeyName, setJourneyName] = useState('');
   const [journeyStartDate, setJourneyStartDate] = useState(new Date());
   const [journeyDuration, setJourneyDuration] = useState('');
@@ -132,9 +128,8 @@ export default function OnboardingScreen() {
     return name.trim().length > 0 && ageRange.length > 0 && sex.length > 0 && country.length > 0;
   }
   function canAdvanceStep2() {
-    return experienceLevel.length > 0 && practices.length > 0;
+    return practices.length > 0 && goals.length > 0;
   }
-  function canAdvanceStep3() { return goals.length > 0; }
 
   function togglePractice(p: string) {
     if (p === 'Not sure yet') {
@@ -186,11 +181,11 @@ export default function OnboardingScreen() {
       age_range: ageRange,
       sex,
       country,
-      experience_level: experienceLevel,
+      experience_level: '',
       practices: allPractices,
       goals: goals,
       vocabulary_framework: vocab,
-      chakra_mapping: chakra,
+      chakra_mapping: true,
       onboarding_complete: true,
     });
     if (createJourneyIfSet && journeyName.trim()) {
@@ -273,7 +268,7 @@ export default function OnboardingScreen() {
           </>
         )}
 
-        {/* ── STEP 2 ── */}
+        {/* ── STEP 2 (merged Practices & Goals) ── */}
         {step === 2 && (
           <>
             <View style={s.header}>
@@ -281,30 +276,10 @@ export default function OnboardingScreen() {
                 <Text style={s.backArrow}>‹</Text>
               </TouchableOpacity>
               <ProgressDots current={2} />
-              <Text style={s.title}>Your practice</Text>
+              <Text style={s.title}>Your practice & goals</Text>
             </View>
             <ScrollView style={{ flex: 1 }} contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
-              <Text style={s.label}>EXPERIENCE LEVEL</Text>
-              {EXPERIENCE_LEVELS.map((e) => {
-                const sel = experienceLevel === e.label;
-                return (
-                  <TouchableOpacity
-                    key={e.id}
-                    style={[s.card, sel && s.cardSelected]}
-                    onPress={() => setExperienceLevel(e.label)}
-                    activeOpacity={0.75}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.cardTitle, sel && s.cardTitleSelected]}>{e.label}</Text>
-                      <Text style={s.cardSub}>{e.sub}</Text>
-                    </View>
-                    <View style={[s.cardRadio, sel && s.cardRadioSelected]}>
-                      {sel && <MaterialCommunityIcons name="check" size={14} color="#B07FFF" />}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-              <Text style={[s.label, { marginTop: 24 }]}>PRIMARY PRACTICE(S)</Text>
+              <Text style={s.label}>PRIMARY PRACTICE(S)</Text>
               <View style={s.chipRow}>
                 {PRACTICES.map((p) => (
                   <Chip key={p} label={p} selected={practices.includes(p)} onPress={() => togglePractice(p)} />
@@ -320,6 +295,10 @@ export default function OnboardingScreen() {
                   </View>
                 </View>
               ))}
+              <Text style={[s.label, { marginTop: 24 }]}>WHAT ARE YOU TRACKING?</Text>
+              <View style={s.chipRow}>
+                {GOALS.map((g) => <Chip key={g} label={g} selected={goals.includes(g)} onPress={() => toggleGoal(g)} />)}
+              </View>
               <View style={{ height: 20 }} />
             </ScrollView>
             <View style={[s.footer, { paddingBottom: Math.max(safeBottom, 16) }]}>
@@ -335,7 +314,7 @@ export default function OnboardingScreen() {
           </>
         )}
 
-        {/* ── STEP 3 ── */}
+        {/* ── STEP 3 (Vocabulary) ── */}
         {step === 3 && (
           <>
             <View style={s.header}>
@@ -343,35 +322,6 @@ export default function OnboardingScreen() {
                 <Text style={s.backArrow}>‹</Text>
               </TouchableOpacity>
               <ProgressDots current={3} />
-              <Text style={s.title}>What are you tracking?</Text>
-            </View>
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
-              <View style={s.chipRow}>
-                {GOALS.map((g) => <Chip key={g} label={g} selected={goals.includes(g)} onPress={() => toggleGoal(g)} />)}
-              </View>
-              <View style={{ height: 20 }} />
-            </ScrollView>
-            <View style={[s.footer, { paddingBottom: Math.max(safeBottom, 16) }]}>
-              <TouchableOpacity
-                style={[s.btn, !canAdvanceStep3() && s.btnDisabled]}
-                disabled={!canAdvanceStep3()}
-                onPress={() => setStep(4)}
-                activeOpacity={0.85}
-              >
-                <Text style={[s.btnText, !canAdvanceStep3() && s.btnTextDisabled]}>Continue</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-
-        {/* ── STEP 4 ── */}
-        {step === 4 && (
-          <>
-            <View style={s.header}>
-              <TouchableOpacity style={s.back} onPress={() => setStep(3)}>
-                <Text style={s.backArrow}>‹</Text>
-              </TouchableOpacity>
-              <ProgressDots current={4} />
               <Text style={s.title}>How do you name what you feel?</Text>
               <Text style={s.subtitle}>You can change this at any time in Settings.</Text>
             </View>
@@ -404,35 +354,21 @@ export default function OnboardingScreen() {
                   );
                 })}
               </View>
-
-              {/* Chakra toggle */}
-              <View style={s.toggleRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.toggleLabel}>Chakra body mapping</Text>
-                  <Text style={s.toggleSub}>Show chakra centers alongside body regions.</Text>
-                </View>
-                <Switch
-                  value={chakra}
-                  onValueChange={setChakra}
-                  trackColor={{ false: '#EAE4DC', true: '#6B5E4E' }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
               <View style={{ height: 20 }} />
             </ScrollView>
             <View style={[s.footer, { paddingBottom: Math.max(safeBottom, 16) }]}>
-              <TouchableOpacity style={s.btn} onPress={() => setStep(5)} activeOpacity={0.85}>
+              <TouchableOpacity style={s.btn} onPress={() => setStep(4)} activeOpacity={0.85}>
                 <Text style={s.btnText}>Continue</Text>
               </TouchableOpacity>
             </View>
           </>
         )}
 
-        {/* ── STEP 5 (optional journey) ── */}
-        {step === 5 && (
+        {/* ── STEP 4 (Journey - optional/skippable) ── */}
+        {step === 4 && (
           <>
             <View style={s.header}>
-              <TouchableOpacity style={s.back} onPress={() => setStep(4)}>
+              <TouchableOpacity style={s.back} onPress={() => setStep(3)}>
                 <Text style={s.backArrow}>‹</Text>
               </TouchableOpacity>
               <View style={s.step5TitleRow}>

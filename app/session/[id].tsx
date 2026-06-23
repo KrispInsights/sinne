@@ -286,63 +286,56 @@ export default function SessionDetailScreen() {
           <View style={s.narrativeBody}>
 
             {/* WHAT MOVED section */}
-            {checkin?.energetic_shift && (
-              <View style={s.narrativeCard}>
-                <Text style={s.narrativeSectionLabel}>WHAT MOVED</Text>
-                <Text style={s.narrativeMovementValue}>{checkin.energetic_shift}</Text>
-                {checkin.release_qualities.length > 0 && (
-                  <Text style={s.narrativeSensationTag}>
-                    {checkin.release_qualities.map(capitalize).join(', ')}
-                  </Text>
-                )}
-              </View>
-            )}
+            <View style={s.narrativeCard}>
+              <Text style={[s.narrativeSectionLabel, !checkin?.energetic_shift && s.emptyFieldLabel]}>WHAT MOVED</Text>
+              {checkin?.energetic_shift ? (
+                <>
+                  <Text style={s.narrativeMovementValue}>{checkin.energetic_shift}</Text>
+                  {checkin.release_qualities.length > 0 && (
+                    <Text style={s.narrativeSensationTag}>
+                      {checkin.release_qualities.map(capitalize).join(', ')}
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <Text style={s.emptyFieldText}>—</Text>
+              )}
+            </View>
 
             {/* BODY section */}
-            {(checkin?.body_sensations?.length ?? 0) > 0 && (
-              <View style={s.narrativeCard}>
-                <Text style={s.narrativeSectionLabel}>BODY</Text>
-                <View style={{ alignSelf: 'center' }}>
-                  <BodyFigureEllipses width={180} bodySensations={checkin!.body_sensations} />
-                </View>
-                <View style={s.bodyList}>
-                  {checkin!.body_sensations.map((bs) => {
-                    const region = BODY_REGIONS.find((r) => r.key === bs.region);
-                    return (
-                      <View key={bs.region} style={s.bodyRow}>
-                        <View style={[s.bodyDot, { backgroundColor: REGION_COLORS[bs.region] ?? '#9B7FBF' }]} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={s.bodyRegionName}>
-                            {region?.label ?? bs.region}
-                            {bs.quality && <Text style={s.bodyQuality}> · {capitalize(bs.quality)}</Text>}
-                          </Text>
+            <View style={s.narrativeCard}>
+              <Text style={[s.narrativeSectionLabel, (checkin?.body_sensations?.length ?? 0) === 0 && s.emptyFieldLabel]}>BODY</Text>
+              {(checkin?.body_sensations?.length ?? 0) > 0 ? (
+                <>
+                  <View style={{ alignSelf: 'center' }}>
+                    <BodyFigureEllipses width={180} bodySensations={checkin!.body_sensations} />
+                  </View>
+                  <View style={s.bodyList}>
+                    {checkin!.body_sensations.map((bs) => {
+                      const region = BODY_REGIONS.find((r) => r.key === bs.region);
+                      return (
+                        <View key={bs.region} style={s.bodyRow}>
+                          <View style={[s.bodyDot, { backgroundColor: REGION_COLORS[bs.region] ?? '#9B7FBF' }]} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.bodyRegionName}>
+                              {region?.label ?? bs.region}
+                              {bs.quality && <Text style={s.bodyQuality}> · {capitalize(bs.quality)}</Text>}
+                            </Text>
+                          </View>
                         </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-
-            {/* CONNECTION section */}
-            {checkin?.connection_type && (
-              <View style={s.narrativeCard}>
-                <Text style={s.narrativeSectionLabel}>CONNECTION</Text>
-                <View style={[s.connectionQuote, { borderLeftColor: stateColors.border }]}>
-                  <Text style={s.connectionQuoteText}>
-                    {CONNECTION_OPTIONS.find((o) => o.key === checkin.connection_type)?.label ?? checkin.connection_type}
-                  </Text>
-                  {checkin.connection_note && (
-                    <Text style={s.connectionQuoteText}> — {checkin.connection_note}</Text>
-                  )}
-                </View>
-              </View>
-            )}
+                      );
+                    })}
+                  </View>
+                </>
+              ) : (
+                <Text style={s.emptyFieldText}>—</Text>
+              )}
+            </View>
 
             {/* EMOTIONS section */}
-            {(checkin?.emotion_tags?.length ?? 0) > 0 && (
-              <View style={s.narrativeCard}>
-                <Text style={s.narrativeSectionLabel}>EMOTIONS</Text>
+            <View style={s.narrativeCard}>
+              <Text style={[s.narrativeSectionLabel, (checkin?.emotion_tags?.length ?? 0) === 0 && s.emptyFieldLabel]}>EMOTIONS</Text>
+              {(checkin?.emotion_tags?.length ?? 0) > 0 ? (
                 <View style={s.chipRow}>
                   {checkin!.emotion_tags.map((tag) => {
                     const col = getTagColors(tag);
@@ -353,24 +346,47 @@ export default function SessionDetailScreen() {
                     );
                   })}
                 </View>
-              </View>
-            )}
+              ) : (
+                <Text style={s.emptyFieldText}>—</Text>
+              )}
+            </View>
+
+            {/* CONNECTION section */}
+            <View style={s.narrativeCard}>
+              <Text style={[s.narrativeSectionLabel, !checkin?.connection_type && s.emptyFieldLabel]}>CONNECTION</Text>
+              {checkin?.connection_type ? (
+                <View style={[s.connectionQuote, { borderLeftColor: stateColors.border }]}>
+                  <Text style={s.connectionQuoteText}>
+                    {CONNECTION_OPTIONS.find((o) => o.key === checkin.connection_type)?.label ?? checkin.connection_type}
+                  </Text>
+                  {checkin.connection_note && (
+                    <Text style={s.connectionQuoteText}> — {checkin.connection_note}</Text>
+                  )}
+                </View>
+              ) : (
+                <Text style={s.emptyFieldText}>—</Text>
+              )}
+            </View>
 
             {/* NOTE section */}
-            {checkin?.elaboration_note && (
-              <View style={s.narrativeCard}>
-                <Text style={s.narrativeSectionLabel}>NOTE</Text>
+            <View style={s.narrativeCard}>
+              <Text style={[s.narrativeSectionLabel, !checkin?.elaboration_note && s.emptyFieldLabel]}>IN THIS MOMENT</Text>
+              {checkin?.elaboration_note ? (
                 <Text style={s.narrativeNoteText}>{checkin.elaboration_note}</Text>
-              </View>
-            )}
+              ) : (
+                <Text style={s.emptyFieldText}>Not logged</Text>
+              )}
+            </View>
 
             {/* WHAT FELT DIFFERENT section */}
-            {checkin?.difference_note && (
-              <View style={s.narrativeCard}>
-                <Text style={s.narrativeSectionLabel}>WHAT FELT DIFFERENT</Text>
+            <View style={s.narrativeCard}>
+              <Text style={[s.narrativeSectionLabel, !checkin?.difference_note && s.emptyFieldLabel]}>SINCE LAST TIME</Text>
+              {checkin?.difference_note ? (
                 <Text style={s.narrativeNoteText}>{checkin.difference_note}</Text>
-              </View>
-            )}
+              ) : (
+                <Text style={s.emptyFieldText}>Not logged</Text>
+              )}
+            </View>
 
             <TouchableOpacity style={s.deleteBtn} onPress={() => setShowDelete(true)} activeOpacity={0.7}>
               <Text style={s.deleteBtnText}>Delete session</Text>
@@ -740,6 +756,9 @@ const s = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'uppercase',
   },
+  emptyFieldLabel: {
+    color: '#CCCCCC',
+  },
   narrativeMovementValue: {
     fontSize: 24,
     fontFamily: FONTS.display,
@@ -795,6 +814,13 @@ const s = StyleSheet.create({
     fontSize: 16,
     color: COLORS.text,
     lineHeight: 24,
+    fontFamily: 'Nunito_400Regular',
+  },
+
+  // Empty field placeholder
+  emptyFieldText: {
+    fontSize: 15,
+    color: '#CCCCCC',
     fontFamily: 'Nunito_400Regular',
   },
 

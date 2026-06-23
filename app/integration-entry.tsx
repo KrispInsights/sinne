@@ -98,7 +98,7 @@ function getCategoryKey(category: string): string {
 }
 
 export default function IntegrationEntryScreen() {
-  const { category } = useLocalSearchParams<{ category: string }>();
+  const { category, journeyId } = useLocalSearchParams<{ category: string; journeyId?: string }>();
   const router = useRouter();
   const { bottom: safeBottom } = useSafeAreaInsets();
 
@@ -130,11 +130,36 @@ export default function IntegrationEntryScreen() {
     (async () => {
       const journeys = await getActiveJourneys();
       setActiveJourneys(journeys);
+      // Pre-populate journey selection from grid if passed via params
+      if (journeyId && journeyId.length > 0 && journeys.some((j) => j.id === journeyId)) {
+        setLinkedJourneyId(journeyId);
+      }
     })();
-  }, []);
+  }, [journeyId]);
 
   async function handleSave() {
     setSaving(true);
+
+    // For Emotions category, navigate to emotion-tags screen instead of saving immediately
+    if (cat === 'Emotions') {
+      router.push({
+        pathname: '/integration/emotion-tags',
+        params: {
+          category: cat,
+          noteDate: noteDate,
+          journeyId: linkedJourneyId ?? '',
+          q1: answers[0] || '',
+          q2: answers[1] || '',
+          q3: answers[2] || '',
+          freeText: freeText || '',
+          carryForward: carryForward || '',
+        },
+      } as any);
+      setSaving(false);
+      return;
+    }
+
+    // For all other categories, save immediately as before
     const input: CreateIntegrationInput = {
       note_date: noteDate,
       category: getCategoryKey(cat),

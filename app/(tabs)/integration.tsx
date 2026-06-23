@@ -6,8 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getIntegrations } from '@/lib/storage';
-import type { Integration } from '@/lib/types';
+import { getIntegrations, getActiveJourneys } from '@/lib/storage';
+import type { Integration, Journey } from '@/lib/types';
 import { BottomSheet } from '@/components/BottomSheet';
 import { COLORS, OPTION_TEXT, CATEGORY_DATA } from '@/lib/theme';
 
@@ -55,7 +55,7 @@ function getCatData(category: string) {
 
 // ---- Integration row ----
 
-function IntegrationRow({ integ, onPress }: { integ: Integration; onPress: () => void }) {
+function IntegrationRow({ integ, journeyName, onPress }: { integ: Integration; journeyName: string | null; onPress: () => void }) {
   const firstLine = getFirstLine(integ);
   const displayName = integ.category.charAt(0).toUpperCase() + integ.category.slice(1).toLowerCase();
   const data = getCatData(integ.category);
@@ -72,6 +72,9 @@ function IntegrationRow({ integ, onPress }: { integ: Integration; onPress: () =>
           {firstLine ? (
             <Text style={s.integPreview} numberOfLines={1}>{firstLine}</Text>
           ) : null}
+          {journeyName ? (
+            <Text style={s.journeyLabel}>{journeyName}</Text>
+          ) : null}
         </View>
         <Text style={[s.chevron, { color: data.color }]}>›</Text>
       </View>
@@ -85,13 +88,19 @@ export default function IntegrationScreen() {
   const router = useRouter();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
+  const [activeJourneys, setActiveJourneys] = useState<Journey[]>([]);
+  const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       (async () => {
         const data = await getIntegrations();
-        if (!cancelled) setIntegrations(data);
+        const journeys = await getActiveJourneys();
+        if (!cancelled) {
+          setIntegrations(data);
+          setActiveJourneys(journeys);
+        }
       })();
       return () => { cancelled = true; };
     }, [])
@@ -141,6 +150,39 @@ export default function IntegrationScreen() {
         </View>
         <Text style={s.prompt}>What do you want to explore?</Text>
 
+        {/* Journey assignment row (only visible if active journeys exist) */}
+        {activeJourneys.length > 0 && (
+          <View style={s.journeyAssignSection}>
+            <Text style={s.journeyAssignLabel}>LINK TO JOURNEY (OPTIONAL)</Text>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+              <TouchableOpacity
+                style={[s.journeyChip, selectedJourneyId === null && s.journeyChipSelected]}
+                onPress={() => setSelectedJourneyId(null)}
+                activeOpacity={0.75}
+              >
+                <Text style={[s.journeyChipText, selectedJourneyId === null && s.journeyChipTextSelected]}>
+                  No journey
+                </Text>
+              </TouchableOpacity>
+              {activeJourneys.map((journey) => {
+                const sel = selectedJourneyId === journey.id;
+                return (
+                  <TouchableOpacity
+                    key={journey.id}
+                    style={[s.journeyChip, sel && s.journeyChipSelected]}
+                    onPress={() => setSelectedJourneyId(journey.id)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[s.journeyChipText, sel && s.journeyChipTextSelected]}>
+                      {journey.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         {/* 3×3 grid */}
         <View style={s.grid}>
           {CATEGORIES.map((cat) => {
@@ -149,7 +191,10 @@ export default function IntegrationScreen() {
               <TouchableOpacity
                 key={cat}
                 style={[s.gridCard, { backgroundColor: data.tint, borderColor: data.color }]}
-                onPress={() => router.push({ pathname: '/integration-entry', params: { category: cat } } as any)}
+                onPress={() => router.push({
+                  pathname: '/integration-entry',
+                  params: { category: cat, journeyId: selectedJourneyId ?? '' }
+                } as any)}
                 activeOpacity={0.75}
               >
                 <MaterialCommunityIcons name={data.icon as any} size={28} color={data.color} style={{ marginBottom: 6 }} />
@@ -171,13 +216,19 @@ export default function IntegrationScreen() {
             {groups.map(({ date, items }) => (
               <View key={date} style={s.dateGroup}>
                 <Text style={s.dateHeader}>{formatGroupDate(date)}</Text>
-                {items.map((integ, idx) => (
-                  <IntegrationRow
-                    key={integ.id}
-                    integ={integ}
-                    onPress={() => router.push({ pathname: '/integration/[id]', params: { id: integ.id } } as any)}
-                  />
-                ))}
+                {items.map((integ, idx) => {
+                  const journeyName = integ.journey_id
+                    ? activeJourneys.find((j) => j.id === integ.journey_id)?.name ?? null
+                    : null;
+                  return (
+                    <IntegrationRow
+                      key={integ.id}
+                      integ={integ}
+                      journeyName={journeyName}
+                      onPress={() => router.push({ pathname: '/integration/[id]', params: { id: integ.id } } as any)}
+                    />
+                  );
+                })}
               </View>
             ))}
           </View>
@@ -231,6 +282,44 @@ const s = StyleSheet.create({
   title: { fontSize: 32, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A' },
   prompt: { fontSize: 15, fontWeight: '400', color: '#666666', marginBottom: 20, lineHeight: 22 },
 
+  journeyAssignSection: {
+    marginBottom: 20,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#EEEEEC',
+  },
+  journeyAssignLabel: {
+    fontFamily: 'Nunito_500Medium',
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#999999',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  journeyChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EEEEEC',
+    backgroundColor: '#FFFFFF',
+  },
+  journeyChipSelected: {
+    backgroundColor: '#B07FFF',
+    borderColor: '#B07FFF',
+  },
+  journeyChipText: {
+    fontSize: 13,
+    fontFamily: 'Nunito_500Medium',
+    fontWeight: '500',
+    color: '#666666',
+  },
+  journeyChipTextSelected: {
+    color: '#FFFFFF',
+  },
+
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 32 },
   gridCard: {
     width: '31%', minHeight: 80,
@@ -273,6 +362,14 @@ const s = StyleSheet.create({
   integRowHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   integCategory: { fontFamily: 'Nunito_500Medium', fontSize: 14, fontWeight: '500' },
   integPreview: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#666666', lineHeight: 22 },
+  journeyLabel: {
+    fontFamily: 'Nunito_500Medium',
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#9B7FBF',
+    marginTop: 4,
+    letterSpacing: 0.5,
+  },
   chevron: { fontSize: 18 },
   rowDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 16 },
 

@@ -6,39 +6,85 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   getSession, updateSession, deleteSession, getJourneys,
 } from '@/lib/storage';
 import type { SessionWithCheckin, Journey, BodySensation } from '@/lib/types';
 import { BodyFigureEllipses } from '@/components/BodyFigure';
-import { FONTS, COLORS, CARD_SHADOW, OPTION_TEXT } from '@/lib/theme';
+import { FONTS, COLORS, CARD_SHADOW, OPTION_TEXT, getStateColor as getThemeStateColor, getRegionColor, getEmotionColor } from '@/lib/theme';
 
 // ---- Constants ----
 
-const NS_STATES = [
-  { key: 'grounded',   labels: { plain: 'grounded',   polyvagal: 'Ventral',     ifs: 'Self',           somatic: 'grounded'   }, bg: '#F2F7F3', text: '#7AAE8A', border: '#7AAE8A' },
-  { key: 'activated', labels: { plain: 'Activated', polyvagal: 'Sympathetic', ifs: 'Activated part', somatic: 'Activated' }, bg: '#FAF8F0', text: '#C9B96A', border: '#C9B96A' },
-  { key: 'shutdown',  labels: { plain: 'Shutdown',  polyvagal: 'Dorsal',      ifs: 'Blended',        somatic: 'Shutdown'  }, bg: '#F2F0F5', text: '#7E6B9E', border: '#7E6B9E' },
+const PRACTICE_ICON_KEYS: Array<[string, string]> = [
+  ['Breathwork',  'weather-windy'],
+  ['Dance',       'human-handsup'],
+  ['IFS',         'account-group-outline'],
+  ['Meditation',  'meditation'],
+  ['Qi Gong',     'yin-yang'],
+  ['Reiki',       'hands-pray'],
+  ['Somatic',     'heart-pulse'],
+  ['Sound',       'music-note-outline'],
+  ['Trauma',      'shield-heart-outline'],
+  ['Yoga',        'yoga'],
 ];
 
-const SHIFT_OPTIONS = ['Release', 'Shift', 'No shift'];
+function getPracticeIcon(practiceType: string | null | undefined): string {
+  if (!practiceType) return 'circle-outline';
+  const base = practiceType.split(':')[0].trim();
+  for (const [key, icon] of PRACTICE_ICON_KEYS) {
+    if (base.startsWith(key)) return icon;
+  }
+  return 'circle-outline';
+}
+
+const NS_STATES = [
+  { key: 'grounded',   labels: { plain: 'Grounded',  polyvagal: 'Ventral',     ifs: 'Self',           somatic: 'Grounded'  }, bg: COLORS.groundedTint, text: COLORS.groundedLabel, border: COLORS.grounded },
+  { key: 'activated', labels: { plain: 'Activated', polyvagal: 'Sympathetic', ifs: 'Activated part', somatic: 'Activated' }, bg: COLORS.activatedTint, text: COLORS.activatedLabel, border: COLORS.activated },
+  { key: 'shutdown',  labels: { plain: 'Shutdown',  polyvagal: 'Dorsal',      ifs: 'Blended',        somatic: 'Shutdown'  }, bg: COLORS.shutdownTint, text: COLORS.shutdownLabel, border: COLORS.shutdown },
+];
+
+const SHIFT_OPTIONS = ['Release', 'Shift', 'No Shift'];
 const SHIFT_QUALITIES = ['Tears','Shaking/trembling','Heat/cold wave','Sound/vocalization','Physical sensation','Spontaneous movement','Emotional flood','Breaththrough'];
 
+const PRACTICES_WITH_SUBTYPES: Record<string, string[]> = {
+  'Breathwork': ['4-7-8 breathing','Box breathing','Circular breathing','Conscious connected breathing','Cyclic sighing','Holotropic-style breathing','Pranayama / yogic breathing','Presence Process (Michael Brown)','Rebirthing breathwork','Soma Breath','Somatic breathwork','Wim Hof method','Other'],
+  'Dance / movement therapy': ['5Rhythms','Authentic movement','Contact improvisation','Ecstatic dance','Open Floor','Other'],
+  'Meditation / Vipassana': ['Body scan','Loving-kindness (Metta)','Mindfulness (MBSR)','Nondual / Dzogchen','Transcendental meditation','Vipassana (S.N. Goenka)','Yoga Nidra / NSDR','Zen / Zazen','Other'],
+  'Qi Gong / Tai Chi': ['Medical Qi Gong','Tai Chi Chuan','Zhan Zhuang (standing)','Other'],
+  'Trauma therapy (body-based)': ['AEDP','Brainspotting','Compassionate Inquiry','EMDR','Gestalt','Hakomi','Sensorimotor psychotherapy','Somatic Experiencing (SE)','Other'],
+  'Yoga': ['Ashtanga','Bikram / hot yoga','Hatha','Iyengar','Kundalini','Nidra','Power yoga','Restorative','Somatic yoga','Vinyasa / flow','Yin','Other'],
+};
+
+const ALL_PRACTICES = [
+  'Breathwork',
+  'Dance / movement therapy',
+  'IFS / Internal Family Systems',
+  'Meditation / Vipassana',
+  'Qi Gong / Tai Chi',
+  'Reiki / energy healing',
+  'Somatic Experiencing',
+  'Sound healing',
+  'Trauma therapy (body-based)',
+  'Yoga',
+  'Other',
+];
+
 const EMOTION_CLUSTERS = [
-  { name: 'Grief family',        bg: '#F1F5F8', text: '#6E9BB5', tags: ['grief','sadness','longing','loss','heartbreak'] },
-  { name: 'Fear family',         bg: '#F8F1F0', text: '#B5736A', tags: ['fear','dread','anxiety','terror','panic'] },
-  { name: 'Anger family',        bg: '#F9F5F0', text: '#C49A6C', tags: ['anger','rage','frustration','irritation','resentment'] },
-  { name: 'Shame / contraction', bg: '#F2F0F5', text: '#7E6B9E', tags: ['shame','guilt','unworthiness','smallness'] },
-  { name: 'Positive / opening',  bg: '#F2F7F3', text: '#7AAE8A', tags: ['joy','gratitude','love','warmth','bliss','awe'] },
-  { name: 'Neutral / liminal',   bg: '#F5F2F9', text: '#9B7FBF', tags: ['confusion','numbness','emptiness','dissociation'] },
-  { name: 'Release / movement',  bg: '#F9F5F0', text: '#C49A6C', tags: ['release','openness','relief','surrender'] },
+  { name: 'Grief family',        bg: COLORS.throatTint, text: COLORS.throat, tags: ['grief','sadness','longing','loss','heartbreak'] },
+  { name: 'Fear family',         bg: COLORS.rootTint, text: COLORS.root, tags: ['fear','dread','anxiety','terror','panic'] },
+  { name: 'Anger family',        bg: COLORS.sacralTint, text: COLORS.sacral, tags: ['anger','rage','frustration','irritation','resentment'] },
+  { name: 'Shame / contraction', bg: COLORS.thirdEyeTint, text: COLORS.thirdEye, tags: ['shame','guilt','unworthiness','smallness'] },
+  { name: 'Positive / opening',  bg: COLORS.heartTint, text: COLORS.heart, tags: ['joy','gratitude','love','warmth','bliss','awe'] },
+  { name: 'Neutral / liminal',   bg: COLORS.crownTint, text: COLORS.crown, tags: ['confusion','numbness','emptiness','dissociation'] },
+  { name: 'Release / movement',  bg: COLORS.sacralTint, text: COLORS.sacral, tags: ['release','openness','relief','surrender'] },
 ];
 
 function getTagColors(tag: string) {
   for (const c of EMOTION_CLUSTERS) {
     if (c.tags.includes(tag)) return { bg: c.bg, text: c.text };
   }
-  return { bg: '#F5F2F9', text: '#9B7FBF' };
+  return getEmotionColor(tag);
 }
 
 const BODY_REGIONS = [
@@ -57,9 +103,9 @@ const BODY_REGIONS = [
 ];
 
 const REGION_COLORS: Record<string, string> = {
-  head: '#9B7FBF', eyes: '#7E6B9E', jaw: '#7E6B9E', throat: '#6E9BB5',
-  chest: '#7AAE8A', shoulders: '#7AAE8A', arms: '#7AAE8A', solar_plexus: '#C9B96A',
-  pelvis: '#C49A6C', legs: '#B5736A', spine: '#9B7FBF', full_body: '#9B7FBF',
+  head: COLORS.crown, eyes: COLORS.thirdEye, jaw: COLORS.thirdEye, throat: COLORS.throat,
+  chest: COLORS.heart, shoulders: COLORS.heart, arms: COLORS.heart, solar_plexus: COLORS.solar,
+  pelvis: COLORS.sacral, legs: COLORS.root, spine: COLORS.crown, full_body: COLORS.crown,
 };
 
 const CONNECTION_OPTIONS = [
@@ -69,13 +115,8 @@ const CONNECTION_OPTIONS = [
 ];
 
 function getStateColor(state: string | null | undefined): { border: string; bg: string } {
-  const colors: Record<string, { border: string; bg: string }> = {
-    grounded: { border: '#7AAE8A', bg: '#7AAE8A40' },
-    grounded: { border: '#7AAE8A', bg: '#7AAE8A40' },
-    activated: { border: '#C9B96A', bg: '#C9B96A40' },
-    shutdown: { border: '#7E6B9E', bg: '#7E6B9E40' },
-  };
-  return colors[state ?? ''] ?? { border: '#EEEEEC', bg: '#EEEEEC40' };
+  const themeColors = getThemeStateColor(state);
+  return { border: themeColors.border, bg: themeColors.bg };
 }
 
 function getNsState(key: string | null | undefined) {
@@ -123,8 +164,42 @@ export default function SessionDetailScreen() {
   const [elaboration, setElaboration] = useState('');
   const [differenceNote, setDifferenceNote] = useState('');
   const [practiceType, setPracticeType] = useState('');
+  const [expandedPractice, setExpandedPractice] = useState('');
+  const [otherPracticeText, setOtherPracticeText] = useState('');
   const [durationText, setDurationText] = useState('');
   const [journeyId, setJourneyId] = useState<string | null>(null);
+
+  // Parse practice type into main/subtype/other for editing
+  function parsePracticeType(pt: string | null | undefined) {
+    if (!pt) {
+      setPracticeType('');
+      setExpandedPractice('');
+      setOtherPracticeText('');
+      return;
+    }
+
+    // Check if it matches "MainType: Subtype" pattern
+    if (pt.includes(':')) {
+      const [main, sub] = pt.split(':').map(s => s.trim());
+      if (ALL_PRACTICES.includes(main)) {
+        setPracticeType(pt);
+        setExpandedPractice(main);
+        return;
+      }
+    }
+
+    // Check if it's a known main practice
+    if (ALL_PRACTICES.includes(pt)) {
+      setPracticeType(pt);
+      setExpandedPractice(pt);
+      return;
+    }
+
+    // Otherwise it's a custom "Other" practice
+    setPracticeType(pt);
+    setExpandedPractice('Other');
+    setOtherPracticeText(pt);
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -145,7 +220,7 @@ export default function SessionDetailScreen() {
           setConnectionNote(checkin?.connection_note ?? '');
           setElaboration(checkin?.elaboration_note ?? '');
           setDifferenceNote(checkin?.difference_note ?? '');
-          setPracticeType(session.practice_type ?? '');
+          parsePracticeType(session.practice_type);
           setDurationText(session.duration_minutes !== null ? String(session.duration_minutes) : '');
           setJourneyId(session.journey_id);
         }
@@ -190,7 +265,7 @@ export default function SessionDetailScreen() {
     setConnectionNote(checkin?.connection_note ?? '');
     setElaboration(checkin?.elaboration_note ?? '');
     setDifferenceNote(checkin?.difference_note ?? '');
-    setPracticeType(session.practice_type ?? '');
+    parsePracticeType(session.practice_type);
     setDurationText(session.duration_minutes !== null ? String(session.duration_minutes) : '');
     setJourneyId(session.journey_id);
     setEditMode(false);
@@ -221,8 +296,12 @@ export default function SessionDetailScreen() {
     return (
       <SafeAreaView style={s.safe} edges={['top']}>
         <View style={s.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={s.iconBtn}>
-            <Text style={s.backText}>‹</Text>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={s.iconBtn}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Text style={s.heroBackText}>‹</Text>
           </TouchableOpacity>
         </View>
         <View style={s.emptyCenter}>
@@ -249,8 +328,14 @@ export default function SessionDetailScreen() {
           <LinearGradient
             colors={[stateColors.bg, 'rgba(255,255,255,0)']}
             style={s.heroHeader}
+            pointerEvents="box-none"
           >
-            <TouchableOpacity onPress={() => router.back()} style={s.heroBackBtn}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={s.heroBackBtn}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              activeOpacity={0.6}
+            >
               <Text style={s.heroBackText}>‹</Text>
             </TouchableOpacity>
 
@@ -260,20 +345,19 @@ export default function SessionDetailScreen() {
               </Text>
 
               {session.practice_type && (
-                <Text style={s.heroPractice}>{session.practice_type}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <MaterialCommunityIcons
+                    name={getPracticeIcon(session.practice_type) as any}
+                    size={20}
+                    color={COLORS.text}
+                  />
+                  <Text style={s.heroPractice}>{session.practice_type}</Text>
+                </View>
               )}
 
               {journeyName && (
                 <View style={s.heroJourneyPill}>
                   <Text style={s.heroJourneyPillText}>{journeyName}</Text>
-                </View>
-              )}
-
-              {nsState && (
-                <View style={[s.heroNsPill, { backgroundColor: stateColors.bg, borderColor: stateColors.border }]}>
-                  <Text style={[s.heroNsPillText, { color: stateColors.border }]}>
-                    {nsState.labels['plain' as VocabKey]}
-                  </Text>
                 </View>
               )}
             </View>
@@ -306,27 +390,25 @@ export default function SessionDetailScreen() {
             <View style={s.narrativeCard}>
               <Text style={[s.narrativeSectionLabel, (checkin?.body_sensations?.length ?? 0) === 0 && s.emptyFieldLabel]}>BODY</Text>
               {(checkin?.body_sensations?.length ?? 0) > 0 ? (
-                <>
-                  <View style={{ alignSelf: 'center' }}>
-                    <BodyFigureEllipses width={180} bodySensations={checkin!.body_sensations} />
+                <View style={{ flexDirection: 'row', gap: 16 }}>
+                  <View style={{ width: 120, flexShrink: 0 }}>
+                    <BodyFigureEllipses width={120} bodySensations={checkin!.body_sensations} />
                   </View>
-                  <View style={s.bodyList}>
+                  <View style={{ flex: 1, gap: 8 }}>
                     {checkin!.body_sensations.map((bs) => {
                       const region = BODY_REGIONS.find((r) => r.key === bs.region);
                       return (
                         <View key={bs.region} style={s.bodyRow}>
-                          <View style={[s.bodyDot, { backgroundColor: REGION_COLORS[bs.region] ?? '#9B7FBF' }]} />
+                          <View style={[s.bodyDot, { backgroundColor: REGION_COLORS[bs.region] ?? COLORS.crown }]} />
                           <View style={{ flex: 1 }}>
-                            <Text style={s.bodyRegionName}>
-                              {region?.label ?? bs.region}
-                              {bs.quality && <Text style={s.bodyQuality}> · {capitalize(bs.quality)}</Text>}
-                            </Text>
+                            <Text style={s.bodyRegionName}>{region?.label ?? bs.region}</Text>
+                            {bs.quality && <Text style={s.bodyQuality}>{capitalize(bs.quality)}</Text>}
                           </View>
                         </View>
                       );
                     })}
                   </View>
-                </>
+                </View>
               ) : (
                 <Text style={s.emptyFieldText}>—</Text>
               )}
@@ -431,11 +513,11 @@ export default function SessionDetailScreen() {
 
           {/* NS state */}
           <Text style={s.sectionLabel}>NERVOUS SYSTEM STATE</Text>
-          <View style={s.optionList}>
+          <View style={s.optionListRow}>
             {NS_STATES.map((st) => (
               <TouchableOpacity
                 key={st.key}
-                style={[s.nsCard, { backgroundColor: st.bg, borderColor: nervousState === st.key ? st.border : '#EEEEEC' }, nervousState === st.key && { borderWidth: 2 }]}
+                style={[s.optionCardCompact, { backgroundColor: st.bg, borderColor: nervousState === st.key ? st.border : COLORS.border }, nervousState === st.key && { borderWidth: 2 }]}
                 onPress={() => setNervousState(nervousState === st.key ? '' : st.key)}
                 activeOpacity={0.75}
               >
@@ -446,11 +528,11 @@ export default function SessionDetailScreen() {
 
           {/* Energetic shift */}
           <Text style={[s.sectionLabel, { marginTop: 20 }]}>SHIFT OR RELEASE</Text>
-          <View style={s.optionList}>
+          <View style={s.optionListRow}>
             {SHIFT_OPTIONS.map((opt) => (
               <TouchableOpacity
                 key={opt}
-                style={[s.optionCard, energeticShift === opt && s.optionCardSelected]}
+                style={[s.optionCardCompact, energeticShift === opt && s.optionCardSelected]}
                 onPress={() => setEnergeticShift(energeticShift === opt ? '' : opt)}
                 activeOpacity={0.75}
               >
@@ -492,11 +574,11 @@ export default function SessionDetailScreen() {
                   return (
                     <TouchableOpacity
                       key={tag}
-                      style={[s.chip, { backgroundColor: sel ? cluster.bg : '#FAFAF8', borderColor: sel ? cluster.bg : '#EEEEEC', borderWidth: 1 }]}
+                      style={[s.chip, { backgroundColor: sel ? cluster.bg : COLORS.inputBg, borderColor: sel ? cluster.bg : COLORS.border, borderWidth: 1 }]}
                       onPress={() => setEmotionTags((prev) => sel ? prev.filter((x) => x !== tag) : [...prev, tag])}
                       activeOpacity={0.7}
                     >
-                      <Text style={[s.chipText, { color: sel ? cluster.text : '#1A1A1A' }]}>{capitalize(tag)}</Text>
+                      <Text style={[s.chipText, { color: sel ? cluster.text : COLORS.text }]}>{capitalize(tag)}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -509,42 +591,42 @@ export default function SessionDetailScreen() {
           <View style={s.chipRow}>
             {BODY_REGIONS.map((r) => {
               const active = bodySensations.some((b) => b.region === r.key);
+              const bs = bodySensations.find((b) => b.region === r.key);
+
               return (
-                <TouchableOpacity
-                  key={r.key}
-                  style={[s.chip, s.chipOutline, active && s.chipSelected]}
-                  onPress={() => toggleRegion(r.key)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[s.chipText, active && s.chipTextSel]}>{r.label}</Text>
-                </TouchableOpacity>
+                <View key={r.key} style={{ width: '100%', marginBottom: 8 }}>
+                  <TouchableOpacity
+                    style={[s.chip, s.chipOutline, active && s.chipSelected]}
+                    onPress={() => toggleRegion(r.key)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.chipText, active && s.chipTextSel]}>{r.label}</Text>
+                  </TouchableOpacity>
+
+                  {active && bs && (
+                    <View style={s.qualitySubSection}>
+                      <Text style={s.qualitySubLabel}>Quality:</Text>
+                      <View style={s.chipRow}>
+                        {r.qualities.map((q) => {
+                          const lq = q.toLowerCase();
+                          return (
+                            <TouchableOpacity
+                              key={q}
+                              style={[s.chip, s.chipSubcategory, bs.quality === lq && s.chipSubcategorySelected]}
+                              onPress={() => setBodyQuality(bs.region, lq)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[s.chipSubcategoryText, bs.quality === lq && s.chipSubcategoryTextSel]}>{q}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+                </View>
               );
             })}
           </View>
-          {bodySensations.map((bs) => {
-            const region = BODY_REGIONS.find((r) => r.key === bs.region);
-            if (!region) return null;
-            return (
-              <View key={bs.region} style={{ marginTop: 12 }}>
-                <Text style={s.qualityLabel}>{region.label.toUpperCase()}, QUALITY</Text>
-                <View style={s.chipRow}>
-                  {region.qualities.map((q) => {
-                    const lq = q.toLowerCase();
-                    return (
-                      <TouchableOpacity
-                        key={q}
-                        style={[s.chip, s.chipOutline, bs.quality === lq && s.chipSelected]}
-                        onPress={() => setBodyQuality(bs.region, lq)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[s.chipText, bs.quality === lq && s.chipTextSel]}>{q}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            );
-          })}
 
           {/* Connection type */}
           <Text style={[s.sectionLabel, { marginTop: 20 }]}>CONNECTION</Text>
@@ -566,7 +648,7 @@ export default function SessionDetailScreen() {
               value={connectionNote}
               onChangeText={setConnectionNote}
               placeholder="Which memory or situation? (optional)"
-              placeholderTextColor="#999999"
+              placeholderTextColor="COLORS.textTertiary"
               multiline
               textAlignVertical="top"
             />
@@ -579,7 +661,7 @@ export default function SessionDetailScreen() {
             value={elaboration}
             onChangeText={setElaboration}
             placeholder="Anything that wants to be named…"
-            placeholderTextColor="#999999"
+            placeholderTextColor="COLORS.textTertiary"
             multiline
             textAlignVertical="top"
           />
@@ -591,27 +673,104 @@ export default function SessionDetailScreen() {
             value={differenceNote}
             onChangeText={setDifferenceNote}
             placeholder="What felt different from last time? (optional)"
-            placeholderTextColor="#999999"
+            placeholderTextColor="COLORS.textTertiary"
             multiline
             textAlignVertical="top"
           />
 
           {/* Practice + duration */}
           <Text style={[s.sectionLabel, { marginTop: 20 }]}>PRACTICE TYPE</Text>
-          <TextInput
-            style={s.input}
-            value={practiceType}
-            onChangeText={setPracticeType}
-            placeholder="e.g. Breathwork (optional)"
-            placeholderTextColor="#999999"
-          />
+          <View style={s.practiceList}>
+            {ALL_PRACTICES.map((p) => {
+              const isExpanded = expandedPractice === p;
+              const subtypes = PRACTICES_WITH_SUBTYPES[p];
+              const currentSubtype = practiceType.startsWith(`${p}:`) ? practiceType.split(':')[1].trim() : '';
+              const isSelected = expandedPractice === p || practiceType === p;
+
+              return (
+                <View key={p}>
+                  <TouchableOpacity
+                    style={s.practiceRow}
+                    onPress={() => {
+                      if (expandedPractice === p) {
+                        setExpandedPractice('');
+                        setPracticeType('');
+                        setOtherPracticeText('');
+                      } else {
+                        setExpandedPractice(p);
+                        setPracticeType(p);
+                        setOtherPracticeText('');
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialCommunityIcons
+                      name={getPracticeIcon(p) as any}
+                      size={22}
+                      color={COLORS.accent}
+                    />
+                    <Text style={[s.practiceRowLabel, isSelected && s.practiceRowLabelSelected]}>{p}</Text>
+                    {isSelected ? (
+                      <View style={s.practiceCheck}>
+                        <Text style={s.practiceCheckMark}>✓</Text>
+                      </View>
+                    ) : (
+                      <MaterialCommunityIcons name="chevron-right" size={18} color={COLORS.textQuaternary} />
+                    )}
+                  </TouchableOpacity>
+
+                  {isExpanded && subtypes && (
+                    <View style={s.subtypeSection}>
+                      <View style={s.chipRow}>
+                        {subtypes.map((sub) => {
+                          const isSubSelected = currentSubtype === sub;
+                          return (
+                            <TouchableOpacity
+                              key={sub}
+                              style={[s.chip, s.chipOutline, isSubSelected && s.chipSelected]}
+                              onPress={() => {
+                                if (isSubSelected) {
+                                  setPracticeType(p);
+                                } else {
+                                  setPracticeType(`${p}: ${sub}`);
+                                }
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[s.chipText, isSubSelected && s.chipTextSel]}>{sub}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+
+                  {isExpanded && p === 'Other' && (
+                    <View style={s.subtypeSection}>
+                      <TextInput
+                        style={[s.textarea, { minHeight: 48 }]}
+                        placeholder="Describe your practice…"
+                        placeholderTextColor={COLORS.textTertiary}
+                        value={otherPracticeText}
+                        onChangeText={(text) => {
+                          setOtherPracticeText(text);
+                          setPracticeType(text);
+                        }}
+                        returnKeyType="done"
+                      />
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
           <Text style={[s.sectionLabel, { marginTop: 16 }]}>DURATION (MINUTES)</Text>
           <TextInput
             style={s.input}
             value={durationText}
             onChangeText={(v) => setDurationText(v.replace(/[^0-9]/g, ''))}
             placeholder="Optional"
-            placeholderTextColor="#999999"
+            placeholderTextColor="COLORS.textTertiary"
             keyboardType="number-pad"
           />
 
@@ -668,20 +827,23 @@ const s = StyleSheet.create({
 
   // Hero header gradient zone
   heroHeader: {
-    height: 200,
+    minHeight: 200,
     paddingHorizontal: 20,
     paddingTop: 12,
+    paddingBottom: 20,
     position: 'relative',
   },
   heroBackBtn: {
     position: 'absolute',
     top: 12,
     left: 20,
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
-  heroBackText: { fontSize: 28, color: '#B07FFF', lineHeight: 32 },
+  heroBackText: { fontSize: 28, color: COLORS.accent, lineHeight: 32 },
   heroEditBtn: {
     position: 'absolute',
     top: 12,
@@ -689,24 +851,24 @@ const s = StyleSheet.create({
     height: 36,
     justifyContent: 'center',
   },
-  heroEditText: { fontSize: 15, color: '#B07FFF', fontWeight: '500' },
+  heroEditText: { fontSize: 15, color: COLORS.accent, fontWeight: '500' },
   heroContent: {
     paddingTop: 60,
     gap: 8,
   },
   heroDateDuration: {
     fontSize: 13,
-    color: '#999999',
+    color: COLORS.textTertiary,
     fontFamily: FONTS.body,
   },
   heroPractice: {
     fontSize: 28,
     fontFamily: FONTS.display,
-    color: '#1A1A1A',
+    color: COLORS.text,
   },
   heroJourneyPill: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F5F2F9',
+    backgroundColor: COLORS.crownTint,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 5,
@@ -715,7 +877,7 @@ const s = StyleSheet.create({
   heroJourneyPillText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#9B7FBF',
+    color: COLORS.crown,
     fontFamily: FONTS.bodyMedium,
   },
   heroNsPill: {
@@ -749,7 +911,7 @@ const s = StyleSheet.create({
   },
   narrativeSectionLabel: {
     fontSize: 11,
-    color: '#999999',
+    color: COLORS.textTertiary,
     letterSpacing: 1.2,
     marginBottom: 8,
     fontFamily: 'Nunito_500Medium',
@@ -757,7 +919,7 @@ const s = StyleSheet.create({
     textTransform: 'uppercase',
   },
   emptyFieldLabel: {
-    color: '#CCCCCC',
+    color: COLORS.textQuaternary,
   },
   narrativeMovementValue: {
     fontSize: 24,
@@ -768,7 +930,7 @@ const s = StyleSheet.create({
   narrativeSensationTag: {
     fontSize: 14,
     fontFamily: 'Nunito_400Regular',
-    color: '#666666',
+    color: COLORS.textSecondary,
     marginBottom: 12,
   },
   narrativeDivider: {
@@ -786,13 +948,13 @@ const s = StyleSheet.create({
   bodyInlineName: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#1A1A1A',
+    color: COLORS.text,
     fontFamily: 'Nunito_500Medium',
   },
   bodyInlineQuality: {
     fontSize: 13,
     fontStyle: 'italic',
-    color: '#999999',
+    color: COLORS.textTertiary,
     fontFamily: 'Nunito_400Regular',
   },
 
@@ -820,7 +982,7 @@ const s = StyleSheet.create({
   // Empty field placeholder
   emptyFieldText: {
     fontSize: 15,
-    color: '#CCCCCC',
+    color: COLORS.textQuaternary,
     fontFamily: 'Nunito_400Regular',
   },
 
@@ -830,17 +992,17 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10, gap: 8,
   },
   iconBtn: { minWidth: 60, height: 36, justifyContent: 'center' },
-  cancelText: { fontSize: 15, color: '#666666' },
-  saveLinkText: { fontSize: 15, color: '#B07FFF', fontWeight: '500', textAlign: 'right' },
-  topBarTitle: { flex: 1, fontSize: 13, color: '#666666', textAlign: 'center' },
+  cancelText: { fontSize: 15, color: COLORS.textSecondary },
+  saveLinkText: { fontSize: 15, color: COLORS.accent, fontWeight: '500', textAlign: 'right' },
+  topBarTitle: { flex: 1, fontSize: 13, color: COLORS.textSecondary, textAlign: 'center' },
   body: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40 },
 
   emptyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyTxt: { fontSize: 15, color: '#999999' },
+  emptyTxt: { fontSize: 15, color: COLORS.textTertiary },
 
   // Edit mode section label
   sectionLabel: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
     textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8,
   },
 
@@ -856,55 +1018,95 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, fontSize: 14,
   },
   chipOutline: {
-    backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
+    backgroundColor: COLORS.inputBg, borderWidth: 1, borderColor: COLORS.border,
   },
-  chipSelected: { backgroundColor: '#B07FFF', borderColor: '#B07FFF' },
+  chipSelected: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
   chipText: { ...OPTION_TEXT, fontSize: 14 },
-  chipTextSel: { color: '#FFFFFF' },
+  chipTextSel: { color: COLORS.card },
+
+  // Body sensation subcategories
+  qualitySubSection: {
+    marginTop: 8,
+    marginLeft: 12,
+    paddingLeft: 12,
+    borderLeftWidth: 2,
+    borderLeftColor: COLORS.accentTint,
+  },
+  qualitySubLabel: {
+    fontFamily: 'Nunito_500Medium',
+    fontSize: 11,
+    fontWeight: '500',
+    color: COLORS.textTertiary,
+    marginBottom: 6,
+  },
+  chipSubcategory: {
+    backgroundColor: COLORS.accentTint,
+    borderWidth: 1,
+    borderColor: COLORS.accentTint,
+  },
+  chipSubcategorySelected: {
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
+  },
+  chipSubcategoryText: {
+    ...OPTION_TEXT,
+    fontSize: 13,
+    color: COLORS.accent,
+  },
+  chipSubcategoryTextSel: {
+    color: COLORS.card,
+  },
 
   bodyList: { gap: 8, marginTop: 12 },
   bodyRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   bodyDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8, flexShrink: 0 },
-  bodyRegionName: { fontSize: 15, fontWeight: '500', color: '#1A1A1A', fontFamily: 'Nunito_500Medium' },
-  bodyQuality: { fontSize: 13, color: '#999999', fontStyle: 'italic', fontFamily: 'Nunito_400Regular' },
+  bodyRegionName: { fontSize: 15, fontWeight: '500', color: COLORS.text, fontFamily: 'Nunito_500Medium' },
+  bodyQuality: { fontSize: 13, color: COLORS.textTertiary, fontStyle: 'italic', fontFamily: 'Nunito_400Regular' },
 
   // Delete button — tiny grey text, no button styling
   deleteBtn: {
     marginTop: 40, alignSelf: 'center',
     paddingVertical: 8, paddingHorizontal: 16,
   },
-  deleteBtnText: { fontSize: 13, fontWeight: '400', color: '#CCCCCC' },
+  deleteBtnText: { fontSize: 13, fontWeight: '400', color: COLORS.textQuaternary },
 
   // Edit mode
   optionList: { gap: 8, marginBottom: 4 },
+  optionListRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   optionCard: {
-    backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
+    backgroundColor: COLORS.inputBg, borderWidth: 1, borderColor: COLORS.border,
     borderRadius: 12, paddingVertical: 14, paddingHorizontal: 16,
   },
-  optionCardSelected: { borderColor: '#B07FFF' },
+  optionCardCompact: {
+    flex: 1,
+    backgroundColor: COLORS.inputBg, borderWidth: 1, borderColor: COLORS.border,
+    borderRadius: 12, paddingVertical: 14, paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  optionCardSelected: { borderColor: COLORS.accent },
   optionCardText: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400' },
-  optionCardTextSel: { color: '#B07FFF' },
+  optionCardTextSel: { color: COLORS.accent },
   qualityLabel: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
     textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6,
   },
   textarea: {
-    fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#1A1A1A',
-    backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
+    fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: COLORS.text,
+    backgroundColor: COLORS.inputBg, borderWidth: 1, borderColor: COLORS.border,
     borderRadius: 10, padding: 14, lineHeight: 22, minHeight: 80,
   },
   input: {
-    backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
+    backgroundColor: COLORS.inputBg, borderWidth: 1, borderColor: COLORS.border,
     borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: '#1A1A1A',
+    fontSize: 15, color: COLORS.text,
   },
   journeyPickerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
+    backgroundColor: COLORS.inputBg, borderWidth: 1, borderColor: COLORS.border,
     borderRadius: 10, paddingHorizontal: 14, paddingVertical: 14,
   },
-  journeyPickerText: { fontSize: 15, color: '#1A1A1A' },
-  chevronSmall: { fontSize: 16, color: '#999999' },
+  journeyPickerText: { fontSize: 15, color: COLORS.text },
+  chevronSmall: { fontSize: 16, color: COLORS.textTertiary },
 
   // Modals
   modalBackdrop: {
@@ -912,36 +1114,80 @@ const s = StyleSheet.create({
     justifyContent: 'flex-end', paddingHorizontal: 16,
   },
   modalCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20,
+    backgroundColor: COLORS.card, borderRadius: 16, padding: 20,
   },
-  modalTitle: { fontSize: 17, fontWeight: '500', color: '#1A1A1A', marginBottom: 8 },
-  modalBody: { fontSize: 14, color: '#666666', marginBottom: 20, lineHeight: 20 },
+  modalTitle: { fontSize: 17, fontWeight: '500', color: COLORS.text, marginBottom: 8 },
+  modalBody: { fontSize: 14, color: COLORS.textSecondary, marginBottom: 20, lineHeight: 20 },
   modalDestructiveBtn: {
     backgroundColor: '#FF2A2A', borderRadius: 12, height: 50,
     alignItems: 'center', justifyContent: 'center', marginBottom: 10,
   },
-  modalDestructiveText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
+  modalDestructiveText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: COLORS.card },
   modalCancelBtn: {
     height: 44, alignItems: 'center', justifyContent: 'center',
   },
-  modalCancelText: { fontSize: 15, color: '#666666' },
+  modalCancelText: { fontSize: 15, color: COLORS.textSecondary },
 
   // Journey picker sheet
   pickerSheet: {
-    backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16,
+    backgroundColor: COLORS.card, borderTopLeftRadius: 16, borderTopRightRadius: 16,
     paddingTop: 16, paddingHorizontal: 0,
   },
   pickerTitle: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
     textTransform: 'uppercase', letterSpacing: 1.2,
     paddingHorizontal: 20, marginBottom: 8,
   },
   pickerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#EEEEEC',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border,
   },
-  pickerRowSelected: { backgroundColor: '#F6F0FF' },
-  pickerRowText: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#666666' },
-  checkmark: { fontSize: 16, color: '#B07FFF', fontWeight: '600' },
+  pickerRowSelected: { backgroundColor: COLORS.accentTint },
+  pickerRowText: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: COLORS.textSecondary },
+  checkmark: { fontSize: 16, color: COLORS.accent, fontWeight: '600' },
+
+  // Practice picker
+  practiceList: { gap: 0, marginBottom: 12 },
+  practiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
+    gap: 12,
+  },
+  practiceRowLabel: {
+    flex: 1,
+    fontFamily: 'Nunito_400Regular',
+    fontSize: 15,
+    color: COLORS.text,
+  },
+  practiceRowLabelSelected: {
+    fontFamily: 'Nunito_600SemiBold',
+    fontWeight: '600',
+    color: COLORS.accent,
+  },
+  practiceCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: COLORS.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  practiceCheckMark: {
+    fontSize: 12,
+    color: COLORS.card,
+    fontWeight: '600',
+  },
+  subtypeSection: {
+    backgroundColor: COLORS.inputBg,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
+  },
 });

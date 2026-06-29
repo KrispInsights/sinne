@@ -105,7 +105,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#F2F1F6' } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="new-session" />
         <Stack.Screen name="new-integration" />
@@ -113,6 +113,8 @@ export default function RootLayout() {
         <Stack.Screen name="session/[id]" />
         <Stack.Screen name="journey/[id]" />
         <Stack.Screen name="mirror/[id]" />
+        <Stack.Screen name="integration/[id]" />
+        <Stack.Screen name="integration/edit/[id]" />
         <Stack.Screen name="integration-entry" />
         <Stack.Screen name="edit-profile" />
       </Stack>

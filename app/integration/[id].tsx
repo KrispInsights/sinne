@@ -142,6 +142,12 @@ export default function IntegrationDetailScreen() {
           <Text style={s.backBtnText}>‹</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
+        <TouchableOpacity
+          onPress={() => router.push({ pathname: '/integration/edit/[id]', params: { id: integration.id } } as any)}
+          hitSlop={8}
+        >
+          <Text style={s.editBtn}>Edit</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
@@ -186,6 +192,7 @@ const s = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   backBtnText: { fontSize: 28, color: COLORS.accent, lineHeight: 32 },
+  editBtn: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: COLORS.accent },
   body: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 60 },
 
   categoryChip: {

@@ -89,7 +89,6 @@ export default function IntegrationScreen() {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [activeJourneys, setActiveJourneys] = useState<Journey[]>([]);
-  const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -150,39 +149,6 @@ export default function IntegrationScreen() {
         </View>
         <Text style={s.prompt}>What do you want to explore?</Text>
 
-        {/* Journey assignment row (only visible if active journeys exist) */}
-        {activeJourneys.length > 0 && (
-          <View style={s.journeyAssignSection}>
-            <Text style={s.journeyAssignLabel}>LINK TO JOURNEY (OPTIONAL)</Text>
-            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-              <TouchableOpacity
-                style={[s.journeyChip, selectedJourneyId === null && s.journeyChipSelected]}
-                onPress={() => setSelectedJourneyId(null)}
-                activeOpacity={0.75}
-              >
-                <Text style={[s.journeyChipText, selectedJourneyId === null && s.journeyChipTextSelected]}>
-                  No journey
-                </Text>
-              </TouchableOpacity>
-              {activeJourneys.map((journey) => {
-                const sel = selectedJourneyId === journey.id;
-                return (
-                  <TouchableOpacity
-                    key={journey.id}
-                    style={[s.journeyChip, sel && s.journeyChipSelected]}
-                    onPress={() => setSelectedJourneyId(journey.id)}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[s.journeyChipText, sel && s.journeyChipTextSelected]}>
-                      {journey.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
         {/* 3×3 grid */}
         <View style={s.grid}>
           {CATEGORIES.map((cat) => {
@@ -193,7 +159,7 @@ export default function IntegrationScreen() {
                 style={[s.gridCard, { backgroundColor: data.tint, borderColor: data.color }]}
                 onPress={() => router.push({
                   pathname: '/integration-entry',
-                  params: { category: cat, journeyId: selectedJourneyId ?? '' }
+                  params: { category: cat }
                 } as any)}
                 activeOpacity={0.75}
               >
@@ -281,44 +247,6 @@ const s = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   title: { fontSize: 32, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A' },
   prompt: { fontSize: 15, fontWeight: '400', color: '#666666', marginBottom: 20, lineHeight: 22 },
-
-  journeyAssignSection: {
-    marginBottom: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#EEEEEC',
-  },
-  journeyAssignLabel: {
-    fontFamily: 'Nunito_500Medium',
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#999999',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  journeyChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#EEEEEC',
-    backgroundColor: '#FFFFFF',
-  },
-  journeyChipSelected: {
-    backgroundColor: '#B07FFF',
-    borderColor: '#B07FFF',
-  },
-  journeyChipText: {
-    fontSize: 13,
-    fontFamily: 'Nunito_500Medium',
-    fontWeight: '500',
-    color: '#666666',
-  },
-  journeyChipTextSelected: {
-    color: '#FFFFFF',
-  },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 32 },
   gridCard: {

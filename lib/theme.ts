@@ -147,6 +147,76 @@ export const COLORS = {
   // Muted clay red — warm, not alarm
   destructive: '#C0392B',
 
+  // ── UI grays ──────────────────────────────
+  // For dividers, disabled states, placeholders
+  gray100: '#F0F0F0',
+  gray200: '#E0E0E0',
+  gray300: '#CCCCCC',
+  gray400: '#999999',
+  gray500: '#666666',
+  gray600: '#1A1A1A',
+  white: '#FFFFFF',
+  black: '#000000',
+
+  // ── Accent purple (legacy) ────────────────
+  // Used for FAB, certain accents - consider migrating to teal
+  purple: '#B07FFF',
+  purpleTint: '#B07FFF26',
+
+  // ── Integration category colors ───────────
+  // Used in data visualization
+  emotionCategory: '#6E9BB5',
+  bodyCategory: '#7AAE8A',
+  triggersCategory: '#B5736A',
+  patternsCategory: '#7E6B9E',
+  meaningCategory: '#9B7FBF',
+  realizationsCategory: '#9B7FBF',
+  gratitudeCategory: '#7AAE8A',
+  memoriesCategory: '#6E9BB5',
+  actionsCategory: '#C9B96A',
+  freeTextCategory: '#999999',
+
+  // ── Journey accent colors ─────────────────
+  journey1: '#6E9BB5',
+  journey2: '#7AAE8A',
+  journey3: '#C49A6C',
+  journey4: '#7E6B9E',
+  journey5: '#B5736A',
+  journey6: '#C9B96A',
+
+  // ── Calendar & visualization ──────────────
+  calendarToday: '#B07FFF',
+  calendarPast: '#CCCCCC',
+  calendarFuture: '#999999',
+  integrationIcon: '#9B7FBF',
+  errorRed: '#FF6B6B',
+
+  // ── Chakra visualization (brighter) ───────
+  // Used for chakra view dots - brighter than muted palette
+  chakraRoot: '#E8A080',
+  chakraSacral: '#E88040',
+  chakraSolar: '#E8C080',
+  chakraHeart: '#80C880',
+  chakraThroat: '#80C8E8',
+  chakraThirdEye: '#8080E8',
+  chakraCrown: '#C880C8',
+
+  // ── Practice type legend colors ───────────
+  practiceBreathwork: '#6E9BB5',
+  practiceSomatic: '#7AAE8A',
+  practiceMeditation: '#9B7FBF',
+  practiceYoga: '#C49A6C',
+  practiceMovement: '#C9B96A',
+  practiceOther: '#CCCCCC',
+
+  // ── Arc band colors (muted NS states) ─────
+  arcGrounded: '#8FAE9A',
+  arcActivated: '#B8A080',
+  arcShutdown: '#A89ABF',
+
+  // ── NS state narrative accent ─────────────
+  narrativeAccent: '#3E6B6A',
+
   // ── NS state colours ──────────────────────
   // Warm-to-cool temperature scale within muted family
   // No alarm reds — trauma-informed safe palette
@@ -182,6 +252,58 @@ export const COLORS = {
   crown: '#9070A8',
   crownTint: '#F0EAF5',
 };
+
+// ─────────────────────────────────────────────
+// Helper arrays for rotation/selection
+// ─────────────────────────────────────────────
+export const JOURNEY_COLORS = [
+  COLORS.journey1,
+  COLORS.journey2,
+  COLORS.journey3,
+  COLORS.journey4,
+  COLORS.journey5,
+  COLORS.journey6,
+];
+
+export const ARC_BAND_COLORS = [
+  COLORS.arcGrounded,
+  COLORS.arcActivated,
+  COLORS.arcShutdown,
+];
+
+export const PRACTICE_LEGEND_COLORS = [
+  { color: COLORS.practiceBreathwork, label: 'Breathwork' },
+  { color: COLORS.practiceSomatic, label: 'Somatic' },
+  { color: COLORS.practiceMeditation, label: 'Meditation' },
+  { color: COLORS.practiceYoga, label: 'Yoga' },
+  { color: COLORS.practiceMovement, label: 'Movement' },
+  { color: COLORS.practiceOther, label: 'Other' },
+];
+
+// Integration category color map
+export const INTEGRATION_CATEGORY_COLORS: Record<string, string> = {
+  emotions: COLORS.emotionCategory,
+  body: COLORS.bodyCategory,
+  triggers: COLORS.triggersCategory,
+  patterns: COLORS.patternsCategory,
+  meaning: COLORS.meaningCategory,
+  realizations: COLORS.realizationsCategory,
+  gratitude: COLORS.gratitudeCategory,
+  memories: COLORS.memoriesCategory,
+  actions: COLORS.actionsCategory,
+  free_text: COLORS.freeTextCategory,
+};
+
+// Chakra visualization color array (for overview dots)
+export const CHAKRA_COLORS = [
+  COLORS.chakraRoot,
+  COLORS.chakraSacral,
+  COLORS.chakraSolar,
+  COLORS.chakraHeart,
+  COLORS.chakraThroat,
+  COLORS.chakraThirdEye,
+  COLORS.chakraCrown,
+];
 
 export const RADII = {
   card: 20,

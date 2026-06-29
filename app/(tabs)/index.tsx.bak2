@@ -14,7 +14,7 @@ import { getSessions, getActiveJourneys, getJourneys, getProfile, getIntegration
 import { consumeSessionSaved } from '@/lib/events';
 import type { SessionWithCheckin, Journey, Profile, Integration, Mirror } from '@/lib/types';
 import { BodyFigureEllipses, REGION_CHAKRA_COLORS } from '@/components/BodyFigure';
-import { COLORS, FONTS, OPTION_TEXT, getRegionColor, getEmotionColor, CARD_SHADOW, JOURNEY_COLORS, ARC_BAND_COLORS, PRACTICE_LEGEND_COLORS, INTEGRATION_CATEGORY_COLORS } from '@/lib/theme';
+import { COLORS, OPTION_TEXT, getRegionColor, getEmotionColor, CARD_SHADOW } from '@/lib/theme';
 
 const IS_DEV = process.env.EXPO_PUBLIC_DEV_MODE === 'true';
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -22,29 +22,29 @@ const { width: SCREEN_W } = Dimensions.get('window');
 // ---- Constants ----
 
 const STATE_COLORS: Record<string, string> = {
-  grounded: COLORS.heart,
-  activated: COLORS.actionsCategory,
-  shutdown: COLORS.patternsCategory,
+  grounded: '#7AAE8A',
+  activated: '#C9B96A',
+  shutdown: '#7E6B9E',
 };
 
 // Muted polyvagal "wellness tone" palette — used only for the arc chart bands,
 // the breakdown nervous-system bars, and the session list state dots.
 const WELLNESS_TONES: Record<string, string> = {
-  grounded: COLORS.arcGrounded,
-  activated: '#D6C2A1', // Sympathetic — Warm Sand (custom blend)
-  shutdown: COLORS.arcShutdown,
+  grounded: '#8FAE9A',   // Ventral — Sage Green
+  activated: '#D6C2A1', // Sympathetic — Warm Sand
+  shutdown: '#A89ABF',  // Dorsal — Dusty Lavender
 };
 
 // Saturated variants for the Arc chart only — WELLNESS_TONES stays muted
 // for chips/cards elsewhere; the chart needs more contrast since the
 // line and dots ARE the content, not an accent.
 const ARC_CHART_TONES: Record<string, string> = {
-  grounded: '#5A9470', // Saturated green (custom)
-  activated: '#C9A53F', // Saturated ochre (custom)
-  shutdown: '#8166B8', // Saturated purple (custom)
+  grounded: '#5A9470',
+  activated: '#C9A53F',
+  shutdown: '#8166B8',
 };
 
-const ACTIVATED_LABEL = COLORS.arcActivated;
+const ACTIVATED_LABEL = '#B8A080';
 
 function getWellnessChipColors(state?: string | null): { bg: string; text: string } {
   if (state === 'activated') return { bg: WELLNESS_TONES.activated + '26', text: ACTIVATED_LABEL };
@@ -56,7 +56,7 @@ function getWellnessDotColor(state?: string | null): string {
   if (state === 'activated') return WELLNESS_TONES.activated;
   if (state === 'shutdown') return WELLNESS_TONES.shutdown;
   if (state === 'grounded') return WELLNESS_TONES.grounded;
-  return COLORS.gray300;
+  return '#CCCCCC';
 }
 
 // Saturated variant for Arc chart dots
@@ -64,7 +64,7 @@ function getArcDotColor(state?: string | null): string {
   if (state === 'activated') return ARC_CHART_TONES.activated;
   if (state === 'shutdown') return ARC_CHART_TONES.shutdown;
   if (state === 'grounded') return ARC_CHART_TONES.grounded;
-  return COLORS.gray300;
+  return '#CCCCCC';
 }
 
 type SomaView = 'arc' | 'calendar';
@@ -95,19 +95,24 @@ const VOCAB_NAMES: Record<string, Record<string, string>> = {
   somatic:   { grounded: 'Grounded',   activated: 'Activated',      shutdown: 'Shutdown' },
 };
 
-// Note: EMOTION_TAG_COLOR uses theme's getEmotionColor() - mapping kept here for quick lookup
 const EMOTION_TAG_COLOR: Record<string, string> = {
-  grief: COLORS.throat, sadness: COLORS.throat, longing: COLORS.throat, loss: COLORS.throat, heartbreak: COLORS.throat,
-  fear: COLORS.root, dread: COLORS.root, anxiety: COLORS.root, terror: COLORS.root, panic: COLORS.root,
-  anger: COLORS.sacral, rage: COLORS.sacral, frustration: COLORS.sacral, irritation: COLORS.sacral, resentment: COLORS.sacral,
-  shame: COLORS.thirdEye, guilt: COLORS.thirdEye, unworthiness: COLORS.thirdEye, smallness: COLORS.thirdEye,
-  joy: COLORS.heart, gratitude: COLORS.heart, love: COLORS.heart, warmth: COLORS.heart, bliss: COLORS.heart, awe: COLORS.heart,
-  confusion: COLORS.crown, numbness: COLORS.crown, emptiness: COLORS.crown, dissociation: COLORS.crown,
-  release: COLORS.sacral, openness: COLORS.sacral, relief: COLORS.sacral, surrender: COLORS.sacral,
+  grief: '#6E9BB5', sadness: '#6E9BB5', longing: '#6E9BB5', loss: '#6E9BB5', heartbreak: '#6E9BB5',
+  fear: '#B5736A', dread: '#B5736A', anxiety: '#B5736A', terror: '#B5736A', panic: '#B5736A',
+  anger: '#C49A6C', rage: '#C49A6C', frustration: '#C49A6C', irritation: '#C49A6C', resentment: '#C49A6C',
+  shame: '#7E6B9E', guilt: '#7E6B9E', unworthiness: '#7E6B9E', smallness: '#7E6B9E',
+  joy: '#7AAE8A', gratitude: '#7AAE8A', love: '#7AAE8A', warmth: '#7AAE8A', bliss: '#7AAE8A', awe: '#7AAE8A',
+  confusion: '#9B7FBF', numbness: '#9B7FBF', emptiness: '#9B7FBF', dissociation: '#9B7FBF',
+  release: '#C49A6C', openness: '#C49A6C', relief: '#C49A6C', surrender: '#C49A6C',
 };
 
-// Use theme's INTEGRATION_CATEGORY_COLORS
-const CATEGORY_COLORS = INTEGRATION_CATEGORY_COLORS;
+const CATEGORY_COLORS: Record<string, string> = {
+  emotions: '#6E9BB5', body: '#7AAE8A', triggers: '#B5736A', patterns: '#7E6B9E',
+  meaning: '#9B7FBF', realizations: '#9B7FBF', gratitude: '#7AAE8A',
+  memories: '#6E9BB5', actions: '#C9B96A', free_text: '#999999',
+};
+
+// Muted accent colours cycled across active journey cards
+const JOURNEY_ACCENT_COLORS = ['#6E9BB5', '#7AAE8A', '#C49A6C', '#7E6B9E', '#B5736A', '#C9B96A'];
 
 // ---- Helpers ----
 
@@ -119,7 +124,7 @@ function getDominantEmotionColor(swc: SessionWithCheckin): string {
   }
   const state = swc.checkin?.nervous_system_state;
   if (state && STATE_COLORS[state]) return STATE_COLORS[state];
-  return COLORS.border;
+  return '#DDDDDD';
 }
 
 function getDominantEmotionLabel(swc: SessionWithCheckin): string | null {
@@ -190,14 +195,14 @@ const PRACTICE_ICON_KEYS: Array<[string, string]> = [
 ];
 
 function getPracticeTypeColor(practiceType: string | null | undefined): string {
-  if (!practiceType) return COLORS.practiceOther;
+  if (!practiceType) return '#CCCCCC';
   const base = practiceType.split(':')[0].trim().toLowerCase();
-  if (base.startsWith('breathwork') || base.includes('breath')) return COLORS.practiceBreathwork;
-  if (base.startsWith('somatic')) return COLORS.practiceSomatic;
-  if (base.startsWith('meditation')) return COLORS.practiceMeditation;
-  if (base.startsWith('yoga')) return COLORS.practiceYoga;
-  if (base.startsWith('dance') || base.includes('movement')) return COLORS.practiceMovement;
-  return COLORS.practiceOther;
+  if (base.startsWith('breathwork') || base.includes('breath')) return '#6E9BB5';
+  if (base.startsWith('somatic')) return '#7AAE8A';
+  if (base.startsWith('meditation')) return '#9B7FBF';
+  if (base.startsWith('yoga')) return '#C49A6C';
+  if (base.startsWith('dance') || base.includes('movement')) return '#C9B96A';
+  return '#CCCCCC';
 }
 
 function getSessionIcon(swc: SessionWithCheckin): { icon: string; color: string } {
@@ -477,10 +482,10 @@ function CalendarGrid({
             style={{
               width: cellSize, height: 24, alignItems: 'center', justifyContent: 'center',
               borderRightWidth: i < 6 ? StyleSheet.hairlineWidth : 0,
-              borderRightColor: COLORS.gray100,
+              borderRightColor: '#F0F0F0',
             }}
           >
-            <Text style={{ fontSize: 11, fontWeight: '500', color: COLORS.gray400 }}>{d}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '500', color: '#999999' }}>{d}</Text>
           </View>
         ))}
       </View>
@@ -488,7 +493,7 @@ function CalendarGrid({
       {/* Week rows */}
       {weeks.map((week, wi) => {
         return (
-        <View key={wi} style={{ flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.gray100, position: 'relative' }}>
+        <View key={wi} style={{ flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#F0F0F0', position: 'relative' }}>
           {week.map((date, di) => {
             const isLast = di === 6;
             if (!date) {
@@ -498,7 +503,7 @@ function CalendarGrid({
                   style={{
                     width: cellSize, height: CAL_CELL_H,
                     borderRightWidth: isLast ? 0 : StyleSheet.hairlineWidth,
-                    borderRightColor: COLORS.gray100,
+                    borderRightColor: '#F0F0F0',
                   }}
                 />
               );
@@ -521,10 +526,10 @@ function CalendarGrid({
               cellBgColor = stateColor ? `${stateColor}15` : undefined; // ~8% opacity
             }
 
-            const numColor = isToday ? COLORS.white
-              : hasSession ? COLORS.gray600
-              : isPast ? COLORS.gray300
-              : COLORS.gray400;
+            const numColor = isToday ? '#FFFFFF'
+              : hasSession ? '#1A1A1A'
+              : isPast ? '#CCCCCC'
+              : '#999999';
 
             return (
               <TouchableOpacity
@@ -532,7 +537,7 @@ function CalendarGrid({
                 style={{
                   width: cellSize, height: CAL_CELL_H,
                   borderRightWidth: isLast ? 0 : StyleSheet.hairlineWidth,
-                  borderRightColor: COLORS.gray100,
+                  borderRightColor: '#F0F0F0',
                   alignItems: 'center', paddingTop: 6,
                   backgroundColor: cellBgColor,
                 }}
@@ -547,8 +552,8 @@ function CalendarGrid({
                 activeOpacity={0.6}
               >
                 {isToday ? (
-                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.purple, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.white }}>{dateNum}</Text>
+                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#B07FFF', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF' }}>{dateNum}</Text>
                   </View>
                 ) : (
                   <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
@@ -570,7 +575,7 @@ function CalendarGrid({
                 </View>
                 <View style={{ height: 12, marginTop: 2 }}>
                   {hasInteg && (
-                    <MaterialCommunityIcons name="notebook-outline" size={12} color={COLORS.meaningCategory} />
+                    <MaterialCommunityIcons name="notebook-outline" size={12} color="#9B7FBF" />
                   )}
                 </View>
               </TouchableOpacity>
@@ -584,12 +589,12 @@ function CalendarGrid({
 }
 
 const CALENDAR_LEGEND = [
-  { color: COLORS.practiceBreathwork, label: 'Breathwork' },
-  { color: COLORS.practiceSomatic, label: 'Somatic' },
-  { color: COLORS.practiceMeditation, label: 'Meditation' },
-  { color: COLORS.practiceYoga, label: 'Yoga' },
-  { color: COLORS.practiceMovement, label: 'Movement' },
-  { color: COLORS.practiceOther, label: 'Other' },
+  { color: '#6E9BB5', label: 'Breathwork' },
+  { color: '#7AAE8A', label: 'Somatic' },
+  { color: '#9B7FBF', label: 'Meditation' },
+  { color: '#C49A6C', label: 'Yoga' },
+  { color: '#C9B96A', label: 'Movement' },
+  { color: '#CCCCCC', label: 'Other' },
 ] as const;
 
 function CalendarView({
@@ -622,10 +627,10 @@ function CalendarView({
         <Text style={s.calNavMonth}>{getMonthLabel(year, month)}</Text>
         <View style={{ flexDirection: 'row', gap: 4 }}>
           <TouchableOpacity onPress={prevMonth} style={s.calNavBtn} activeOpacity={0.6}>
-            <MaterialCommunityIcons name="chevron-left" size={18} color={COLORS.purple} />
+            <MaterialCommunityIcons name="chevron-left" size={18} color="#B07FFF" />
           </TouchableOpacity>
           <TouchableOpacity onPress={nextMonth} style={s.calNavBtn} activeOpacity={0.6}>
-            <MaterialCommunityIcons name="chevron-right" size={18} color={COLORS.purple} />
+            <MaterialCommunityIcons name="chevron-right" size={18} color="#B07FFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -668,7 +673,7 @@ function CalendarView({
 
 // ---- Arc chart ----
 
-// ARC_BAND_COLORS is imported from theme
+const ARC_BAND_COLORS = ['#8FAE9A', '#B8A080', '#A89ABF'];
 
 function getArcBandLabels(framework: string): Array<{ label: string; color: string }> {
   const vocabMap = VOCAB_NAMES[framework] ?? VOCAB_NAMES.plain;
@@ -770,7 +775,7 @@ function ArcChart({ sessions, integrations, framework }: { sessions: SessionWith
     <View>
       {sessions.length === 0 ? (
         <View style={{ height: CHART_H, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: 13, color: COLORS.gray400 }}>No sessions yet.</Text>
+          <Text style={{ fontSize: 13, color: '#999999' }}>No sessions yet.</Text>
         </View>
       ) : (
         <>
@@ -824,7 +829,7 @@ function ArcChart({ sessions, integrations, framework }: { sessions: SessionWith
                 ))}
 
                 {/* Connecting line */}
-                <Path d={linePath} stroke={COLORS.purple} strokeOpacity={0.5} strokeWidth={2} fill="none" strokeLinecap="round" />
+                <Path d={linePath} stroke="#B07FFF" strokeOpacity={0.5} strokeWidth={2} fill="none" strokeLinecap="round" />
 
                 {/* Data points — 5-layer constellation (Section 2b) */}
                 {points.map((p, i) => {
@@ -844,7 +849,7 @@ function ArcChart({ sessions, integrations, framework }: { sessions: SessionWith
                   return (
                     <React.Fragment key={i}>
                       {/* Layer 1: Selection halo */}
-                      <Circle cx={p.x} cy={p.y} r={18} fill={COLORS.purple} fillOpacity={selected === i ? 0.16 : 0} />
+                      <Circle cx={p.x} cy={p.y} r={18} fill="#B07FFF" fillOpacity={selected === i ? 0.16 : 0} />
 
                       {/* Layer 2: Outer glow halo (larger for multi-session) */}
                       <Circle cx={p.x} cy={p.y} r={isMultiSession ? 22 : 18} fill={p.dotColor} fillOpacity={0.08} />
@@ -866,7 +871,7 @@ function ArcChart({ sessions, integrations, framework }: { sessions: SessionWith
                         y={p.y + 3}
                         textAnchor="middle"
                         fontSize={8}
-                        fill={COLORS.white}
+                        fill="#FFFFFF"
                         fontWeight="600"
                         opacity={0.85}
                       >
@@ -913,7 +918,7 @@ function ArcChart({ sessions, integrations, framework }: { sessions: SessionWith
 
                       {/* Invisible tap target */}
                       <Circle
-                        cx={p.x} cy={p.y} r={20} fill={COLORS.black} fillOpacity={0}
+                        cx={p.x} cy={p.y} r={20} fill="#000000" fillOpacity={0}
                         onPress={() => setSelected((cur) => (cur === i ? null : i))}
                       />
                     </React.Fragment>
@@ -923,7 +928,7 @@ function ArcChart({ sessions, integrations, framework }: { sessions: SessionWith
                 {/* X-axis date labels */}
                 {points.map((p, i) => (
                   (points.length <= 8 || i % 3 === 0) ? (
-                    <SvgText key={i} x={p.x} y={CHART_H + 14} textAnchor="middle" fontSize={10} fill={COLORS.gray300}>
+                    <SvgText key={i} x={p.x} y={CHART_H + 14} textAnchor="middle" fontSize={10} fill="#CCCCCC">
                       {p.dateLabel}
                     </SvgText>
                   ) : null
@@ -965,7 +970,7 @@ function ArcChart({ sessions, integrations, framework }: { sessions: SessionWith
               <View style={{ height: NOTE_ROW_H }}>
                 {points.filter((p) => p.hasInteg).map((p, i) => (
                   <View key={i} style={{ position: 'absolute', left: p.x - 6, top: 2 }}>
-                    <MaterialCommunityIcons name="notebook-outline" size={12} color={COLORS.meaningCategory} />
+                    <MaterialCommunityIcons name="notebook-outline" size={12} color="#9B7FBF" />
                   </View>
                 ))}
               </View>
@@ -1088,7 +1093,7 @@ function SessionDetailSheet({
   const swc = sessionList[0];
   if (!swc) return null;
   const { checkin } = swc;
-  const nsColor = checkin?.nervous_system_state ? STATE_COLORS[checkin.nervous_system_state] : COLORS.gray400;
+  const nsColor = checkin?.nervous_system_state ? STATE_COLORS[checkin.nervous_system_state] : '#999999';
   const nsName = checkin?.nervous_system_state ? getStateName(framework, checkin.nervous_system_state) : '';
 
   return (
@@ -1113,8 +1118,8 @@ function SessionDetailSheet({
               <Text style={s.detailSectionLabel}>EMOTIONS</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 {checkin.emotion_tags.map((tag) => (
-                  <View key={tag} style={[s.detailChip, { backgroundColor: (EMOTION_TAG_COLOR[tag] ?? COLORS.meaningCategory) + '26' }]}>
-                    <Text style={[s.detailChipText, { color: EMOTION_TAG_COLOR[tag] ?? COLORS.meaningCategory }]}>
+                  <View key={tag} style={[s.detailChip, { backgroundColor: (EMOTION_TAG_COLOR[tag] ?? '#9B7FBF') + '26' }]}>
+                    <Text style={[s.detailChipText, { color: EMOTION_TAG_COLOR[tag] ?? '#9B7FBF' }]}>
                       {tag.charAt(0).toUpperCase() + tag.slice(1)}
                     </Text>
                   </View>
@@ -1127,7 +1132,7 @@ function SessionDetailSheet({
               <Text style={s.detailSectionLabel}>BODY</Text>
               {checkin.body_sensations.map((bs) => (
                 <View key={bs.region} style={s.detailBodyRow}>
-                  <View style={[s.detailBodyDot, { backgroundColor: REGION_CHAKRA_COLORS[bs.region] ?? COLORS.meaningCategory }]} />
+                  <View style={[s.detailBodyDot, { backgroundColor: REGION_CHAKRA_COLORS[bs.region] ?? '#9B7FBF' }]} />
                   <Text style={s.detailBodyText}>
                     {bs.region.replace('_', ' / ')}
                     {bs.quality ? <Text style={s.detailBodyQuality}> · {bs.quality}</Text> : null}
@@ -1234,13 +1239,13 @@ function DaySheet({
                     <Text style={s.daySheetRowSubtitle}>{swc.session.duration_minutes} min</Text>
                   ) : null}
                 </View>
-                <MaterialCommunityIcons name="chevron-right" size={18} color={COLORS.gray300} />
+                <MaterialCommunityIcons name="chevron-right" size={18} color="#CCCCCC" />
               </TouchableOpacity>
             );
           })}
           {dayIntegrations.map((integ) => {
             const firstLine = getIntegFirstLine(integ);
-            const catColor = CATEGORY_COLORS[integ.category] ?? COLORS.meaningCategory;
+            const catColor = CATEGORY_COLORS[integ.category] ?? '#9B7FBF';
             return (
               <TouchableOpacity
                 key={integ.id}
@@ -1253,7 +1258,7 @@ function DaySheet({
                   <Text style={s.daySheetRowTitle}>{integ.category.charAt(0).toUpperCase() + integ.category.slice(1).replace('_', ' ')}</Text>
                   {firstLine ? <Text style={s.daySheetRowSubtitle} numberOfLines={1}>{firstLine}</Text> : null}
                 </View>
-                <MaterialCommunityIcons name="chevron-right" size={18} color={COLORS.gray300} />
+                <MaterialCommunityIcons name="chevron-right" size={18} color="#CCCCCC" />
               </TouchableOpacity>
             );
           })}
@@ -1277,12 +1282,12 @@ function DaySheet({
                 activeOpacity={0.6}
                 onPress={() => { onDismiss(); router.push({ pathname: '/mirror/[id]', params: { id: m.id } } as any); }}
               >
-                <MaterialCommunityIcons name="eye-outline" size={16} color={COLORS.purple} />
+                <MaterialCommunityIcons name="eye-outline" size={16} color="#B07FFF" />
                 <View style={{ flex: 1 }}>
                   <Text style={s.daySheetRowTitle}>{typeLabel} Mirror</Text>
                   <Text style={s.daySheetRowSubtitle}>{rangeLabel}</Text>
                 </View>
-                <MaterialCommunityIcons name="chevron-right" size={18} color={COLORS.gray300} />
+                <MaterialCommunityIcons name="chevron-right" size={18} color="#CCCCCC" />
               </TouchableOpacity>
             );
           })}
@@ -1432,7 +1437,7 @@ function JourneyDetailSheet({
               value={editName}
               onChangeText={setEditName}
               placeholder="Journey name"
-              placeholderTextColor={COLORS.gray300}
+              placeholderTextColor="#CCCCCC"
               returnKeyType="done"
             />
 
@@ -1470,7 +1475,7 @@ function JourneyDetailSheet({
                   const active = editDurDays === val;
                   return (
                     <View key={i} style={{ height: EDU_ITEM_H, alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: active ? 24 : 17, fontWeight: active ? '700' : '400', color: active ? COLORS.gray600 : COLORS.gray300 }}>
+                      <Text style={{ fontSize: active ? 24 : 17, fontWeight: active ? '700' : '400', color: active ? '#1A1A1A' : '#CCCCCC' }}>
                         {val}
                       </Text>
                     </View>
@@ -1485,7 +1490,7 @@ function JourneyDetailSheet({
             {/* Edit button top-right */}
             <View style={{ alignItems: 'flex-end', marginBottom: 2 }}>
               <TouchableOpacity onPress={() => { onDismiss(); router.push({ pathname: '/journey/[id]', params: { id: journey.id } } as any); }} hitSlop={8}>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: COLORS.purple }}>Edit</Text>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: '#B07FFF' }}>Edit</Text>
               </TouchableOpacity>
             </View>
             <Text style={s.journeySheetName}>{journey.name}</Text>
@@ -1697,7 +1702,7 @@ export default function HomeScreen() {
   const visibleJourneys = journeyExpanded ? activeJourneys : activeJourneys.slice(0, JOURNEY_MAX);
   const hiddenCount = activeJourneys.length - JOURNEY_MAX;
 
-  // Extract filtered sessions/integrations for use in Soma card
+  // Extract filtered sessions/integrations for use in both Soma card and PatternsSheet
   const { sessions: filteredSessions, integrations: filteredIntegrations } =
     filterByWindow(sessions, integrations, somaFilter);
 
@@ -1756,7 +1761,7 @@ export default function HomeScreen() {
                     }}
                     hitSlop={8}
                   >
-                    <Text style={{ fontSize: 10, fontWeight: '500', color: COLORS.errorRed, textDecorationLine: 'underline' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '500', color: '#FF6B6B', textDecorationLine: 'underline' }}>
                       Reset onboarding
                     </Text>
                   </TouchableOpacity>
@@ -1764,7 +1769,7 @@ export default function HomeScreen() {
               )}
             </View>
             <TouchableOpacity onPress={() => router.push('/settings' as any)} hitSlop={8}>
-              <MaterialCommunityIcons name="cog-outline" size={20} color={COLORS.gray300} />
+              <MaterialCommunityIcons name="cog-outline" size={20} color="#CCCCCC" />
             </TouchableOpacity>
           </View>
 
@@ -1778,7 +1783,7 @@ export default function HomeScreen() {
                 <View style={{ gap: 12 }}>
                   {visibleJourneys.map((j, idx) => {
                     const pct = journeyProgressPct(j);
-                    const accent = JOURNEY_COLORS[idx % JOURNEY_COLORS.length];
+                    const accent = JOURNEY_ACCENT_COLORS[idx % JOURNEY_ACCENT_COLORS.length];
                     const xy = journeyXY(j);
                     return (
                       <TouchableOpacity
@@ -1834,8 +1839,8 @@ export default function HomeScreen() {
                         </View>
                       ) : null}
                       {lastTopEmotions.map((tag) => (
-                        <View key={tag} style={[s.emotionChip, { backgroundColor: (EMOTION_TAG_COLOR[tag] ?? COLORS.meaningCategory) + '26', alignSelf: 'flex-start', marginTop: 6 }]}>
-                          <Text style={[s.emotionChipText, { color: EMOTION_TAG_COLOR[tag] ?? COLORS.meaningCategory }]}>
+                        <View key={tag} style={[s.emotionChip, { backgroundColor: (EMOTION_TAG_COLOR[tag] ?? '#9B7FBF') + '26', alignSelf: 'flex-start', marginTop: 6 }]}>
+                          <Text style={[s.emotionChipText, { color: EMOTION_TAG_COLOR[tag] ?? '#9B7FBF' }]}>
                             {tag.charAt(0).toUpperCase() + tag.slice(1)}
                           </Text>
                         </View>
@@ -1886,7 +1891,7 @@ export default function HomeScreen() {
                     <Text style={s.somaFilterPillText}>
                       {SOMA_FILTERS.find((f) => f.key === somaFilter)?.label ?? 'This Week'}
                     </Text>
-                    <MaterialCommunityIcons name="clock-time-four-outline" size={14} color={COLORS.gray500} />
+                    <MaterialCommunityIcons name="clock-time-four-outline" size={14} color="#666666" />
                   </TouchableOpacity>
                 )}
                 <View style={{ marginLeft: 'auto' }}>
@@ -1900,7 +1905,7 @@ export default function HomeScreen() {
                           activeOpacity={0.7}
                           style={[s.somaToggleBtn, active && s.somaToggleBtnActive]}
                         >
-                          <MaterialCommunityIcons name={icon as any} size={18} color={active ? COLORS.white : COLORS.gray400} />
+                          <MaterialCommunityIcons name={icon as any} size={18} color={active ? '#FFFFFF' : '#999999'} />
                         </TouchableOpacity>
                       );
                     })}
@@ -1981,7 +1986,7 @@ export default function HomeScreen() {
       <BottomSheet visible={actionSheetOpen} onDismiss={() => setActionSheetOpen(false)}>
         <View style={s.actionSheet}>
           <TouchableOpacity style={s.actionRow} onPress={handleNewSession} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="plus-circle-outline" size={26} color={COLORS.bodyCategory} />
+            <MaterialCommunityIcons name="plus-circle-outline" size={26} color="#7AAE8A" />
             <View style={{ flex: 1 }}>
               <Text style={s.actionLabel}>New session</Text>
               <Text style={s.actionSubtitle}>Record what you noticed</Text>
@@ -1989,7 +1994,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <View style={s.actionDivider} />
           <TouchableOpacity style={s.actionRow} onPress={handleNewIntegration} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="notebook-edit-outline" size={26} color={COLORS.emotionCategory} />
+            <MaterialCommunityIcons name="notebook-edit-outline" size={26} color="#6E9BB5" />
             <View style={{ flex: 1 }}>
               <Text style={s.actionLabel}>New integration</Text>
               <Text style={s.actionSubtitle}>{"Log what's still moving"}</Text>
@@ -1997,7 +2002,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <View style={s.actionDivider} />
           <TouchableOpacity style={s.actionRow} onPress={handleNewJourney} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="map-marker-path" size={26} color={COLORS.meaningCategory} />
+            <MaterialCommunityIcons name="map-marker-path" size={26} color="#9B7FBF" />
             <View style={{ flex: 1 }}>
               <Text style={s.actionLabel}>New journey</Text>
               <Text style={s.actionSubtitle}>Set an intention or context</Text>
@@ -2010,7 +2015,7 @@ export default function HomeScreen() {
       <BottomSheet visible={emptyDateSheetOpen} onDismiss={() => setEmptyDateSheetOpen(false)}>
         <View style={s.actionSheet}>
           <TouchableOpacity style={s.actionRow} onPress={handleEmptyDateNewSession} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="plus-circle-outline" size={26} color={COLORS.bodyCategory} />
+            <MaterialCommunityIcons name="plus-circle-outline" size={26} color="#7AAE8A" />
             <View style={{ flex: 1 }}>
               <Text style={s.actionLabel}>New session</Text>
               <Text style={s.actionSubtitle}>Record what you noticed</Text>
@@ -2018,7 +2023,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <View style={s.actionDivider} />
           <TouchableOpacity style={s.actionRow} onPress={handleEmptyDateNewIntegration} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="notebook-edit-outline" size={26} color={COLORS.emotionCategory} />
+            <MaterialCommunityIcons name="notebook-edit-outline" size={26} color="#6E9BB5" />
             <View style={{ flex: 1 }}>
               <Text style={s.actionLabel}>New integration</Text>
               <Text style={s.actionSubtitle}>{"Log what's still moving"}</Text>
@@ -2026,7 +2031,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <View style={s.actionDivider} />
           <TouchableOpacity style={s.actionRow} onPress={handleEmptyDateNewJourney} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="map-marker-path" size={26} color={COLORS.meaningCategory} />
+            <MaterialCommunityIcons name="map-marker-path" size={26} color="#9B7FBF" />
             <View style={{ flex: 1 }}>
               <Text style={s.actionLabel}>New journey</Text>
               <Text style={s.actionSubtitle}>Set an intention or context</Text>
@@ -2103,7 +2108,7 @@ export default function HomeScreen() {
                   {label}
                 </Text>
                 {somaFilter === key && (
-                  <MaterialCommunityIcons name="check" size={20} color={COLORS.purple} />
+                  <MaterialCommunityIcons name="check" size={20} color="#B07FFF" />
                 )}
               </TouchableOpacity>
             ))}
@@ -2123,7 +2128,7 @@ export default function HomeScreen() {
 
         {/* FAB */}
         <TouchableOpacity style={s.fab} onPress={() => setActionSheetOpen(true)} activeOpacity={0.85}>
-          <MaterialCommunityIcons name="plus" size={28} color={COLORS.white} />
+          <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -2131,6 +2136,574 @@ export default function HomeScreen() {
 }
 
 // ---- Styles ----
+
+// PatternsSheet styles
+const ps = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
+  },
+  title: {
+    fontSize: 22,
+    fontFamily: 'DMSerifDisplay_400Regular',
+    color: COLORS.text,
+  },
+  subtitle: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  filterPillContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.accentTint,
+    borderRadius: 12,
+    height: 36,
+    paddingHorizontal: 12,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: COLORS.accent + '4D', // 30% opacity
+  },
+  filterPillText: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.accent,
+  },
+  filterPickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  filterPickerSheet: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  filterPickerTitle: {
+    fontSize: 17,
+    fontFamily: 'Nunito_600SemiBold',
+    color: COLORS.text,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  filterPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  filterPickerRowText: {
+    fontSize: 15,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.text,
+  },
+  filterPickerRowTextSelected: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: COLORS.accent,
+  },
+  scrollContent: {
+    paddingTop: 24,
+    paddingBottom: 80,
+    gap: 40,
+  },
+  placeholderText: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingTop: 40,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingTop: 40,
+  },
+  sectionHeading: {
+    fontSize: 11,
+    fontFamily: 'Nunito_600SemiBold',
+    color: COLORS.textTertiary,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontFamily: 'Nunito_600SemiBold',
+    color: COLORS.textTertiary,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 16,
+  },
+  // Phase 3: The Arc section
+  arcDateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingHorizontal: 20,
+  },
+  arcDateText: {
+    fontSize: 10,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.textTertiary,
+  },
+  arcLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 20,
+    marginTop: 12,
+  },
+  arcLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  arcLegendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  arcLegendText: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.textSecondary,
+  },
+  arcNarrative: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    paddingHorizontal: 20,
+    marginTop: 16,
+    lineHeight: 20,
+  },
+  // Phase 4: Then vs Now section
+  thenVsNowHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  thenVsNowHeaderText: {
+    fontSize: 9,
+    fontFamily: 'Nunito_600SemiBold',
+    color: COLORS.textTertiary,
+    textTransform: 'uppercase',
+    flex: 1,
+    textAlign: 'center',
+  },
+  thenVsNowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  thenVsNowStateLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: 80,
+    gap: 8,
+  },
+  thenVsNowStateDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  thenVsNowStateName: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.textSecondary,
+    flex: 1,
+  },
+  thenVsNowBarsContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  thenVsNowBarColumnFirst: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  thenVsNowBarColumnSecond: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  thenVsNowBar: {
+    height: 10,
+    borderRadius: 5,
+  },
+  thenVsNowCenterLine: {
+    width: 1,
+    height: 20,
+    backgroundColor: COLORS.border,
+  },
+  thenVsNowNarrative: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    paddingHorizontal: 20,
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  // Phase 5: Emotion Timeline section
+  emotionTimelineContainer: {
+    flexDirection: 'row',
+  },
+  emotionTimelineLeftColumn: {
+    width: 80,
+    paddingLeft: 20,
+  },
+  emotionTimelineEmotionRow: {
+    height: 22,
+    justifyContent: 'center',
+  },
+  emotionTimelineEmotionName: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.textSecondary,
+    textAlign: 'right',
+  },
+  emotionTimelineScrollView: {
+    flex: 1,
+  },
+  emotionTimelineHeaderRow: {
+    flexDirection: 'row',
+    height: 22,
+  },
+  emotionTimelineDotRow: {
+    flexDirection: 'row',
+    height: 22,
+  },
+  emotionTimelineCell: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emotionTimelineSessionNumber: {
+    fontSize: 9,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.textTertiary,
+  },
+  emotionTimelineDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  emotionTimelineNarrative: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    paddingHorizontal: 20,
+    marginTop: 16,
+    lineHeight: 20,
+  },
+  // Phase 6: Practice and Outcome section
+  practiceOutcomeDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.border,
+    marginVertical: 14,
+    marginHorizontal: 20,
+  },
+  practiceOutcomeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  practiceOutcomeLeft: {
+    flex: 1,
+    gap: 4,
+  },
+  practiceOutcomeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  practiceOutcomeName: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.text,
+  },
+  practiceOutcomePhrase: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+  },
+  practiceOutcomeRight: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  practiceOutcomeCount: {
+    fontSize: 11,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.textTertiary,
+  },
+  practiceOutcomeBar: {
+    width: 100,
+    height: 8,
+    borderRadius: 4,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  // Phase 7: Mirror Cards section
+  mirrorCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 20,
+    ...CARD_SHADOW,
+  },
+  mirrorCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  mirrorCardLabel: {
+    fontSize: 9,
+    fontFamily: 'Nunito_600SemiBold',
+    color: COLORS.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  mirrorObservation: {
+    fontSize: 15,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.text,
+    lineHeight: 22,
+  },
+  mirrorDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.border,
+    marginVertical: 12,
+  },
+  mirrorQuestion: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  // Phase 8: Recovery and Capacity section
+  sectionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.border,
+    marginVertical: 24,
+  },
+  recoveryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  recoveryColumn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  recoveryLabel: {
+    fontSize: 10,
+    fontFamily: 'Nunito_600SemiBold',
+    color: COLORS.textTertiary,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  recoveryState: {
+    fontSize: 18,
+    fontFamily: 'DMSerifDisplay_400Regular',
+  },
+  recoveryNarrative: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  capacityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 16,
+  },
+  capacitySubtitle: {
+    fontSize: 11,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.textTertiary,
+  },
+  capacityEmpty: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+  },
+  sparklineContainer: {
+    height: 24,
+    marginBottom: 12,
+    position: 'relative',
+  },
+  sparklineBaseline: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 12,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  sparklineDot: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  capacityNarrative: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+  },
+  // Phase 5: Body Over Time section
+  bodyFiguresRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  bodyFigureColumn: {
+    alignItems: 'center',
+  },
+  bodyFigureLabel: {
+    fontSize: 10,
+    fontFamily: 'Nunito_600SemiBold',
+    color: COLORS.textTertiary,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  bodyNarrative: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  // Phase 6: What Keeps Returning section
+  emotionColumnsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  emotionColumn: {
+    flex: 1,
+  },
+  emotionColumnHeader: {
+    fontSize: 10,
+    fontFamily: 'Nunito_600SemiBold',
+    color: COLORS.textTertiary,
+    textTransform: 'uppercase',
+    marginBottom: 12,
+  },
+  emotionChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  emotionChip: {
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+  },
+  emotionChipText: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+  },
+  // Phase 7: Practice and Outcome section
+  practiceRowDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.border,
+    marginVertical: 16,
+  },
+  practiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  practiceLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  practiceName: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: COLORS.text,
+  },
+  practiceRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  practiceDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  practiceNarrative: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+    fontStyle: 'italic',
+    color: COLORS.textSecondary,
+    marginTop: 4,
+  },
+  // Additional styles added in Phase 3
+  // Section A: NS State Over Time
+  nsChart: { height: 120, flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+  nsBar: { flex: 1, borderRadius: 3, overflow: 'hidden', flexDirection: 'column-reverse' },
+  nsLegend: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 12 },
+  nsLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  nsLegendDot: { width: 8, height: 8, borderRadius: 4 },
+  nsLegendText: { fontSize: 12, fontFamily: 'Nunito_400Regular', color: COLORS.textSecondary },
+  nsDateRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  nsDateText: { fontSize: 10, fontFamily: 'Nunito_400Regular', color: COLORS.textQuaternary },
+  // Section B: Then vs Now
+  thenNowRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  thenNowLabel: { width: 36, fontSize: 11, fontFamily: 'Nunito_600SemiBold', color: COLORS.textTertiary, letterSpacing: 0.8 },
+  thenNowBar: { flex: 1, height: 28, borderRadius: 6, flexDirection: 'row', overflow: 'hidden' },
+  thenNowNarrative: { fontSize: 13, fontFamily: 'Nunito_400Regular', fontStyle: 'italic', color: COLORS.textTertiary, marginTop: 8, lineHeight: 18 },
+  // Sections D & E: Body Regions and Emotions (shared list styles)
+  listRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 },
+  listDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5, flexShrink: 0 },
+  listMain: { flex: 1 },
+  listName: { fontSize: 14, fontFamily: 'Nunito_400Regular', color: COLORS.text },
+  listSub: { fontSize: 12, fontFamily: 'Nunito_400Regular', fontStyle: 'italic', color: COLORS.textQuaternary, marginTop: 2 },
+  listCount: { fontSize: 13, fontFamily: 'Nunito_400Regular', color: COLORS.textTertiary },
+  listTrend: { fontSize: 11, fontFamily: 'Nunito_500Medium', minWidth: 44, textAlign: 'right' },
+});
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
@@ -2154,12 +2727,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16,
   },
   greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  greeting: { fontSize: 32, fontFamily: FONTS.display, color: COLORS.gray600, letterSpacing: -0.5 },
-  devBadge: { backgroundColor: COLORS.purple, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 },
-  devBadgeText: { fontSize: 9, fontWeight: '700', color: COLORS.white, letterSpacing: 0.5 },
-  headerDate: { fontSize: 13, fontWeight: '400', color: COLORS.gray400 },
-  headerSubtitle: { fontSize: 15, fontWeight: '400', color: COLORS.gray400, marginTop: 4 },
-  journeyMoreLink: { fontSize: 12, fontWeight: '500', color: COLORS.purple },
+  greeting: { fontSize: 32, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A', letterSpacing: -0.5 },
+  devBadge: { backgroundColor: '#B07FFF', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 },
+  devBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5 },
+  headerDate: { fontSize: 13, fontWeight: '400', color: '#999999' },
+  headerSubtitle: { fontSize: 15, fontWeight: '400', color: '#999999', marginTop: 4 },
+  journeyMoreLink: { fontSize: 12, fontWeight: '500', color: '#B07FFF' },
 
   // FAB
   fab: {
@@ -2169,10 +2742,10 @@ const s = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: COLORS.purple,
+    backgroundColor: '#B07FFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.purple,
+    shadowColor: '#B07FFF',
     shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
@@ -2180,54 +2753,54 @@ const s = StyleSheet.create({
   },
 
   // Journey detail sheet
-  journeySheetName: { fontSize: 18, fontWeight: '600', color: COLORS.gray600, marginBottom: 4, textAlign: 'center' },
-  journeySheetMeta: { fontSize: 13, fontWeight: '400', color: COLORS.gray400, textAlign: 'center', marginBottom: 16 },
+  journeySheetName: { fontSize: 18, fontWeight: '600', color: '#1A1A1A', marginBottom: 4, textAlign: 'center' },
+  journeySheetMeta: { fontSize: 13, fontWeight: '400', color: '#999999', textAlign: 'center', marginBottom: 16 },
   journeySheetBarBg: { height: 4, borderRadius: 2, backgroundColor: 'rgba(176,127,255,0.25)', marginBottom: 6 },
-  journeySheetBarFill: { height: 4, borderRadius: 2, backgroundColor: COLORS.purple },
-  journeySheetPct: { fontSize: 12, fontWeight: '500', color: COLORS.purple, textAlign: 'right', marginBottom: 4 },
+  journeySheetBarFill: { height: 4, borderRadius: 2, backgroundColor: '#B07FFF' },
+  journeySheetPct: { fontSize: 12, fontWeight: '500', color: '#B07FFF', textAlign: 'right', marginBottom: 4 },
   journeySheetSessionRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border,
+    paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#EEEEEC',
   },
   journeySheetSessionDot: { width: 10, height: 10, borderRadius: 5 },
-  journeySheetSessionText: { flex: 1, fontSize: 14, fontFamily: FONTS.body, color: COLORS.gray500 },
-  journeySheetSessionDate: { fontSize: 12, fontFamily: FONTS.body, color: COLORS.gray400 },
+  journeySheetSessionText: { flex: 1, fontSize: 14, fontFamily: 'Nunito_400Regular', color: '#666666' },
+  journeySheetSessionDate: { fontSize: 12, fontFamily: 'Nunito_400Regular', color: '#999999' },
   journeySheetEndBtn: { marginTop: 8, paddingVertical: 12, alignItems: 'center' },
-  journeySheetEndText: { fontSize: 14, fontWeight: '500', color: COLORS.gray400 },
+  journeySheetEndText: { fontSize: 14, fontWeight: '500', color: '#999999' },
   journeySheetLogBtn: {
     height: 48, borderRadius: 24,
-    backgroundColor: COLORS.purple,
+    backgroundColor: '#B07FFF',
     alignItems: 'center', justifyContent: 'center',
     marginTop: 12,
   },
-  journeySheetLogBtnText: { fontFamily: FONTS.bodySemiBold, fontSize: 15, fontWeight: '600', color: COLORS.white },
+  journeySheetLogBtnText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
   journeyConfirmOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
-  journeyConfirmTitle: { fontSize: 17, fontWeight: '600', color: COLORS.gray600, textAlign: 'center', marginBottom: 10 },
-  journeyConfirmBody: { fontSize: 14, fontWeight: '400', color: COLORS.gray500, textAlign: 'center', lineHeight: 20, marginBottom: 28 },
+  journeyConfirmTitle: { fontSize: 17, fontWeight: '600', color: '#1A1A1A', textAlign: 'center', marginBottom: 10 },
+  journeyConfirmBody: { fontSize: 14, fontWeight: '400', color: '#666666', textAlign: 'center', lineHeight: 20, marginBottom: 28 },
   journeyConfirmPrimary: {
     width: '100%', height: 48, borderRadius: 12,
-    backgroundColor: COLORS.purple, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+    backgroundColor: '#B07FFF', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  journeyConfirmPrimaryText: { fontFamily: FONTS.bodySemiBold, fontSize: 15, fontWeight: '600', color: COLORS.white },
+  journeyConfirmPrimaryText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
   journeyConfirmSecondary: { width: '100%', height: 48, alignItems: 'center', justifyContent: 'center' },
-  journeyConfirmSecondaryText: { fontSize: 15, fontWeight: '400', color: COLORS.gray400 },
+  journeyConfirmSecondaryText: { fontSize: 15, fontWeight: '400', color: '#999999' },
 
   // Empty state
   emptyContainer: { alignItems: 'center', paddingTop: 40, paddingHorizontal: 20, gap: 28 },
   emptyTextBlock: { alignItems: 'center', gap: 6 },
-  emptyPrimary: { fontSize: 15, fontWeight: '500', color: COLORS.gray600, textAlign: 'center' },
-  emptySecondary: { fontSize: 13, fontWeight: '400', fontStyle: 'italic', color: COLORS.gray400, textAlign: 'center' },
+  emptyPrimary: { fontSize: 15, fontWeight: '500', color: '#1A1A1A', textAlign: 'center' },
+  emptySecondary: { fontSize: 13, fontWeight: '400', fontStyle: 'italic', color: '#999999', textAlign: 'center' },
 
   // Populated
   populatedContent: { gap: 20, paddingHorizontal: 20, paddingTop: 12 },
 
   // Cards
-  card: { backgroundColor: COLORS.white, borderRadius: 20 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 20 },
   lastSessionCard: { padding: 20 },
 
   // Section labels
   sectionLabel: {
-    fontFamily: FONTS.bodyMedium, fontSize: 11, fontWeight: '500', color: COLORS.gray400,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
     letterSpacing: 1.2, textTransform: 'uppercase',
   },
 
@@ -2235,8 +2808,8 @@ const s = StyleSheet.create({
   activeJourneysSection: { gap: 8 },
   journeyCard: { padding: 20 },
   journeyCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  journeyCardName: { fontSize: 18, fontFamily: FONTS.display, color: COLORS.gray600 },
-  journeyCardCount: { fontFamily: FONTS.body, fontSize: 12, fontWeight: '400', color: COLORS.gray400 },
+  journeyCardName: { fontSize: 18, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A' },
+  journeyCardCount: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: '#999999' },
   journeyCardBarBg: { height: 5, borderRadius: 99, backgroundColor: COLORS.accentTint },
   journeyCardBarFill: { height: 5, borderRadius: 99 },
 
@@ -2246,7 +2819,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4,
   },
   somaCardLabel: {
-    fontSize: 10, fontWeight: '600', color: COLORS.textQuaternary,
+    fontSize: 10, fontWeight: '600', color: '#BBBBBB',
     letterSpacing: 1, textTransform: 'uppercase',
   },
   somaFilterPill: {
@@ -2254,11 +2827,11 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.accentTint, borderRadius: 12, height: 36,
     paddingHorizontal: 14, paddingVertical: 6,
     alignSelf: 'flex-start',
-    borderWidth: 1, borderColor: COLORS.purple + '4D',
+    borderWidth: 1, borderColor: '#B07FFF4D',
   },
   somaFilterPillText: {
     ...OPTION_TEXT, fontSize: 13,
-    fontFamily: FONTS.body,
+    fontFamily: 'Nunito_400Regular',
   },
   somaControlsRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16,
@@ -2267,10 +2840,10 @@ const s = StyleSheet.create({
   somaToggleBtn: { width: 30, height: 30, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   somaToggleBtnActive: {
     backgroundColor: COLORS.accent,
-    shadowColor: COLORS.black, shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2,
+    shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2,
   },
   somaNarrativeText: {
-    fontFamily: FONTS.body,
+    fontFamily: 'Nunito_400Regular',
     fontSize: 13,
     fontStyle: 'italic',
     color: COLORS.textSecondary,
@@ -2281,44 +2854,44 @@ const s = StyleSheet.create({
   // Icon legend
   iconLegend: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', alignItems: 'center' },
   legendIconItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  legendIconText: { fontSize: 11, fontWeight: '400', color: COLORS.gray400 },
+  legendIconText: { fontSize: 11, fontWeight: '400', color: '#999999' },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
 
   // Arc chart
   arcLegendRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12 },
   arcLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   arcLegendDot: { width: 10, height: 10, borderRadius: 5 },
-  arcLegendText: { fontSize: 12, fontWeight: '400', color: COLORS.gray500 },
+  arcLegendText: { fontSize: 12, fontWeight: '400', color: '#666666' },
   arcTooltip: {
-    position: 'absolute', backgroundColor: COLORS.white, borderRadius: 12, padding: 16,
-    shadowColor: COLORS.black, shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 4,
+    position: 'absolute', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16,
+    shadowColor: '#000000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 4,
   },
-  arcTooltipDate: { fontSize: 13, fontWeight: '500', color: COLORS.gray500, fontFamily: FONTS.bodyMedium, marginBottom: 4 },
-  arcTooltipRow: { fontSize: 13, fontWeight: '400', fontFamily: FONTS.body, color: COLORS.gray500, textTransform: 'capitalize', lineHeight: 18, marginBottom: 4 },
-  arcTooltipEmotion: { fontSize: 14, fontWeight: '500', fontFamily: FONTS.bodyMedium, textTransform: 'capitalize', lineHeight: 18 },
+  arcTooltipDate: { fontSize: 13, fontWeight: '500', color: '#666666', fontFamily: 'Nunito_500Medium', marginBottom: 4 },
+  arcTooltipRow: { fontSize: 13, fontWeight: '400', fontFamily: 'Nunito_400Regular', color: '#666666', textTransform: 'capitalize', lineHeight: 18, marginBottom: 4 },
+  arcTooltipEmotion: { fontSize: 14, fontWeight: '500', fontFamily: 'Nunito_500Medium', textTransform: 'capitalize', lineHeight: 18 },
 
   // Last session card
-  lastSessionHeader: { fontFamily: FONTS.body, fontSize: 12, fontWeight: '400', color: COLORS.textTertiary, marginBottom: 14, textAlign: 'center' },
+  lastSessionHeader: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: COLORS.textTertiary, marginBottom: 14, textAlign: 'center' },
   lastSessionBody: { flexDirection: 'column', gap: 10 },
-  lastSessionTitle: { fontSize: 18, fontFamily: FONTS.display, color: COLORS.gray600, textAlign: 'center', width: '100%' },
+  lastSessionTitle: { fontSize: 18, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A', textAlign: 'center', width: '100%' },
   lastSessionColumns: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   lastSessionLeft: { flex: 1, gap: 6 },
   lastSessionRight: { width: 90, alignItems: 'center', justifyContent: 'center' },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 6, marginBottom: 12 },
-  greyChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: COLORS.gray100 },
-  greyChipText: { fontSize: 13, fontWeight: '500', color: COLORS.gray500 },
+  greyChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#F0F0F0' },
+  greyChipText: { fontSize: 13, fontWeight: '500', color: '#666666' },
   wellnessChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6 },
-  wellnessChipText: { fontFamily: FONTS.body, fontSize: 13, fontWeight: '400' },
+  wellnessChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400' },
   emotionChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6 },
-  emotionChipText: { fontFamily: FONTS.body, fontSize: 13, fontWeight: '400' },
+  emotionChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400' },
 
   // Bottom sheets (general)
   sheet: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 12,
+    backgroundColor: '#FFFFFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 12,
   },
   dragHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: COLORS.gray200,
+    width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0',
     alignSelf: 'center', marginBottom: 12,
   },
   actionSheet: { paddingTop: 4 },
@@ -2326,64 +2899,64 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 24, paddingVertical: 14, gap: 16, minHeight: 64,
   },
-  actionLabel: { fontFamily: FONTS.bodyMedium, fontSize: 15, fontWeight: '500', color: COLORS.gray600 },
-  actionSubtitle: { fontFamily: FONTS.body, fontSize: 12, fontWeight: '400', color: COLORS.gray400, marginTop: 2 },
-  actionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border, marginHorizontal: 24 },
+  actionLabel: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#1A1A1A' },
+  actionSubtitle: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: '#999999', marginTop: 2 },
+  actionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#EEEEEC', marginHorizontal: 24 },
 
   // Integration prompt
   integrationPrompt: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24 },
-  integrationPromptTitle: { fontSize: 20, fontFamily: FONTS.display, color: COLORS.gray600, marginBottom: 8, textAlign: 'center' },
-  integrationPromptSubtitle: { fontSize: 14, fontWeight: '400', color: COLORS.gray400, lineHeight: 20, textAlign: 'center', marginBottom: 24 },
+  integrationPromptTitle: { fontSize: 20, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A', marginBottom: 8, textAlign: 'center' },
+  integrationPromptSubtitle: { fontSize: 14, fontWeight: '400', color: '#999999', lineHeight: 20, textAlign: 'center', marginBottom: 24 },
   integrationPromptButtons: { gap: 12 },
   integrationPromptPrimary: {
-    height: 48, borderRadius: 24, backgroundColor: COLORS.purple,
+    height: 48, borderRadius: 24, backgroundColor: '#B07FFF',
     alignItems: 'center', justifyContent: 'center',
   },
-  integrationPromptPrimaryText: { fontFamily: FONTS.bodySemiBold, fontSize: 15, fontWeight: '600', color: COLORS.white },
-  integrationPromptSecondary: { height: 48, borderRadius: 24, backgroundColor: COLORS.gray200, alignItems: 'center', justifyContent: 'center' },
-  integrationPromptSecondaryText: { fontFamily: FONTS.bodyMedium, fontSize: 15, fontWeight: '500', color: COLORS.gray500 },
+  integrationPromptPrimaryText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
+  integrationPromptSecondary: { height: 48, borderRadius: 24, backgroundColor: '#E8E8E8', alignItems: 'center', justifyContent: 'center' },
+  integrationPromptSecondaryText: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#666666' },
 
   // Calendar month nav (inline soma view)
   calNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   calNavBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  calNavMonth: { fontSize: 13, fontWeight: '600', color: COLORS.gray600, letterSpacing: 0.5 },
+  calNavMonth: { fontSize: 13, fontWeight: '600', color: '#1A1A1A', letterSpacing: 0.5 },
 
   // Session detail sheet
   detailSheet: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    backgroundColor: '#FFFFFF', borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingTop: 12, paddingHorizontal: 20, height: '65%',
   },
-  detailDate: { fontSize: 12, fontWeight: '500', color: COLORS.gray400, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 16, textAlign: 'center' },
+  detailDate: { fontSize: 12, fontWeight: '500', color: '#999999', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 16, textAlign: 'center' },
   detailNsPill: {
     borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8,
   },
-  detailNsText: { fontSize: 15, fontWeight: '600', color: COLORS.white },
+  detailNsText: { fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
   detailSection: { marginBottom: 16 },
   detailSectionLabel: {
-    fontFamily: FONTS.bodyMedium, fontSize: 11, fontWeight: '500', color: COLORS.gray400,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
     textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8,
   },
   detailChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   detailChipText: { fontSize: 13, fontWeight: '500' },
   detailBodyRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
   detailBodyDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  detailBodyText: { fontSize: 14, fontWeight: '400', color: COLORS.gray600 },
-  detailBodyQuality: { fontSize: 13, fontWeight: '400', color: COLORS.gray400 },
-  detailNoteText: { fontFamily: FONTS.body, fontSize: 15, fontWeight: '400', color: COLORS.gray500, lineHeight: 22, fontStyle: 'italic' },
+  detailBodyText: { fontSize: 14, fontWeight: '400', color: '#1A1A1A' },
+  detailBodyQuality: { fontSize: 13, fontWeight: '400', color: '#999999' },
+  detailNoteText: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#666666', lineHeight: 22, fontStyle: 'italic' },
 
   // Day detail sheet
   daySheetRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border,
+    paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#EEEEEC',
   },
   daySheetDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
   daySheetRowTitle: { ...OPTION_TEXT, fontSize: 15, fontWeight: '400', textTransform: 'capitalize' },
-  daySheetRowSubtitle: { fontFamily: FONTS.body, fontSize: 12, fontWeight: '400', color: COLORS.gray400, marginTop: 2 },
+  daySheetRowSubtitle: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: '#999999', marginTop: 2 },
 
   // Saved toast
   savedToast: { position: 'absolute', top: 100, left: 0, right: 0, alignItems: 'center' },
-  savedToastText: { fontSize: 13, color: COLORS.gray400 },
+  savedToastText: { fontSize: 13, color: '#999999' },
 
   // Filter picker modal
   filterPickerBackdrop: {
@@ -2391,46 +2964,46 @@ const s = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   filterPickerSheet: {
-    backgroundColor: COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    backgroundColor: '#FFFFFF', borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingTop: 12, paddingBottom: 40,
   },
   filterPickerDragHandle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: COLORS.gray200,
+    width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0',
     alignSelf: 'center', marginBottom: 16,
   },
   filterPickerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 24, paddingVertical: 14, minHeight: 48,
   },
-  filterPickerRowText: { fontFamily: FONTS.body, fontSize: 15, fontWeight: '400', color: COLORS.gray600 },
-  filterPickerRowTextSelected: { fontWeight: '600', color: COLORS.purple },
+  filterPickerRowText: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#1A1A1A' },
+  filterPickerRowTextSelected: { fontWeight: '600', color: '#B07FFF' },
 
   // Journey edit mode
   journeyEditHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: 20, paddingBottom: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border,
+    marginBottom: 20, paddingBottom: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#EEEEEC',
   },
-  journeyEditTitle: { fontSize: 16, fontWeight: '600', color: COLORS.gray600 },
-  journeyEditCancel: { fontFamily: FONTS.bodyMedium, fontSize: 15, fontWeight: '500', color: COLORS.gray400 },
-  journeyEditSave: { fontFamily: FONTS.bodyMedium, fontSize: 15, fontWeight: '500', color: COLORS.purple },
+  journeyEditTitle: { fontSize: 16, fontWeight: '600', color: '#1A1A1A' },
+  journeyEditCancel: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#999999' },
+  journeyEditSave: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#B07FFF' },
   journeyEditLabel: {
-    fontSize: 10, fontWeight: '700', color: COLORS.gray400,
+    fontSize: 10, fontWeight: '700', color: '#999999',
     textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
   },
   journeyEditInput: {
-    backgroundColor: COLORS.inputBg, borderWidth: 1.5, borderColor: COLORS.border,
+    backgroundColor: '#FAFAF8', borderWidth: 1.5, borderColor: '#EEEEEC',
     borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: COLORS.gray600,
+    fontSize: 15, color: '#1A1A1A',
   },
   journeyEditWheelWrap: {
     height: EDU_ITEM_H * 3, overflow: 'hidden', position: 'relative',
-    borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border,
+    borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#EEEEEC',
     marginTop: 4,
   },
   journeyEditWheelIndicator: {
     position: 'absolute', top: EDU_ITEM_H, left: 0, right: 0, height: EDU_ITEM_H,
-    borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: COLORS.purple + '22',
+    borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#B07FFF22',
     pointerEvents: 'none',
   },
-  journeyEditWheelUnit: { fontSize: 13, fontWeight: '400', color: COLORS.gray400, textAlign: 'center', marginTop: 6, marginBottom: 16 },
+  journeyEditWheelUnit: { fontSize: 13, fontWeight: '400', color: '#999999', textAlign: 'center', marginTop: 6, marginBottom: 16 },
 });

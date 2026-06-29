@@ -63,9 +63,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="mirror"
         options={{
-          title: 'Mirror',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons name={focused ? 'eye' : 'eye-outline'} size={24} color={color} />
+          title: 'Reflect',
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="eye-outline" size={24} color={color} />
           ),
         }}
       />

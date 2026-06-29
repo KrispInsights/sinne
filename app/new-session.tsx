@@ -11,11 +11,11 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { BottomSheet } from '@/components/BottomSheet';
 import {
   getSessions, getProfile, getActiveJourneys,
-  createSession, updateSession,
+  createSession, updateSession, createJourney,
 } from '@/lib/storage';
 import { markSessionSaved } from '@/lib/events';
 import type { BodySensation, Journey } from '@/lib/types';
-import { RADII, COLORS, OPTION_TEXT } from '@/lib/theme';
+import { RADII, COLORS, FONTS, OPTION_TEXT } from '@/lib/theme';
 
 function journeyIncludesToday(journey: Journey): boolean {
   if (!journey.start_date || !journey.duration_days) return false;
@@ -318,6 +318,9 @@ export default function NewSessionScreen() {
   const [activeJourneys, setActiveJourneys] = useState<Journey[]>([]);
   const [linkedJourneyId, setLinkedJourneyId] = useState<string | null>(null);
   const [showJourneyPicker, setShowJourneyPicker] = useState(false);
+  const [showNewJourneySheet, setShowNewJourneySheet] = useState(false);
+  const [newJourneyName, setNewJourneyName] = useState('');
+  const [newJourneyDuration, setNewJourneyDuration] = useState(30);
 
   // Step 1
   const today = todayIso();
@@ -449,6 +452,24 @@ export default function NewSessionScreen() {
     router.back();
   }
 
+  async function handleCreateJourney() {
+    if (!newJourneyName.trim()) return;
+
+    const startDate = todayIso();
+    const { journey } = await createJourney({
+      name: newJourneyName.trim(),
+      start_date: startDate,
+      duration_days: newJourneyDuration,
+      status: 'active',
+    });
+
+    setActiveJourneys((prev) => [...prev, journey]);
+    setLinkedJourneyId(journey.id);
+    setShowNewJourneySheet(false);
+    setNewJourneyName('');
+    setNewJourneyDuration(30);
+  }
+
   // ── Step 1 ──
   if (step === 1) {
     return (
@@ -541,30 +562,6 @@ export default function NewSessionScreen() {
               </View>
             )}
 
-            {/* Journey selector */}
-            {!isJourneyLocked && activeJourneys.length > 0 && (
-              <View style={ss.journeySelectorRow}>
-                <TouchableOpacity
-                  style={ss.journeyPill}
-                  onPress={() => setShowJourneyPicker(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[ss.journeyPillText, !linkedJourneyId && { opacity: 0.6 }]}>
-                    {activeJourneys.find((j) => j.id === linkedJourneyId)?.name ?? 'No journey selected'}
-                  </Text>
-                  <MaterialCommunityIcons name="chevron-down" size={16} color="#B07FFF" />
-                </TouchableOpacity>
-              </View>
-            )}
-            {!isJourneyLocked && activeJourneys.length === 0 && (
-              <View style={ss.noJourneyRow}>
-                <Text style={ss.noJourneyText}>No active journey</Text>
-                <TouchableOpacity onPress={() => router.push('/new-journey')} activeOpacity={0.7}>
-                  <Text style={ss.createJourneyLink}>+ Create Journey</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
             <Text style={ss.prompt}>What type of practice?</Text>
             <View style={ss.practiceList}>
               {ALL_PRACTICES.map((p, idx, arr) => {
@@ -629,6 +626,28 @@ export default function NewSessionScreen() {
                 );
               })}
             </View>
+
+            {/* Journey selector - moved to bottom */}
+            {!isJourneyLocked && (
+              <>
+                <Text style={[ss.prompt, { marginTop: 24 }]}>Link to a journey?</Text>
+                <TouchableOpacity
+                  style={ss.journeyDropdown}
+                  onPress={() => setShowJourneyPicker(true)}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[ss.journeyDropdownText, !linkedJourneyId && { color: COLORS.textTertiary }]}>
+                      {linkedJourneyId
+                        ? activeJourneys.find((j) => j.id === linkedJourneyId)?.name
+                        : 'No journey selected'}
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.purple} />
+                </TouchableOpacity>
+              </>
+            )}
+
             <View style={{ height: 80 }} />
           </ScrollView>
           <View style={[ss.footerDots, { paddingBottom: Math.max(safeBottom + 16, 32) }]}>
@@ -1118,7 +1137,7 @@ export default function NewSessionScreen() {
             activeOpacity={0.7}
           >
             <Text style={ss.journeyPickerOptionText}>No journey</Text>
-            {linkedJourneyId === null && <MaterialCommunityIcons name="check" size={20} color="#B07FFF" />}
+            {linkedJourneyId === null && <MaterialCommunityIcons name="check" size={20} color={COLORS.purple} />}
           </TouchableOpacity>
           {activeJourneys.map((journey) => (
             <TouchableOpacity
@@ -1128,10 +1147,68 @@ export default function NewSessionScreen() {
               activeOpacity={0.7}
             >
               <Text style={ss.journeyPickerOptionText}>{journey.name}</Text>
-              {linkedJourneyId === journey.id && <MaterialCommunityIcons name="check" size={20} color="#B07FFF" />}
+              {linkedJourneyId === journey.id && <MaterialCommunityIcons name="check" size={20} color={COLORS.purple} />}
             </TouchableOpacity>
           ))}
+          <View style={ss.journeyPickerDivider} />
+          <TouchableOpacity
+            style={ss.journeyPickerCreateOption}
+            onPress={() => {
+              setShowJourneyPicker(false);
+              setShowNewJourneySheet(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="plus-circle-outline" size={22} color={COLORS.purple} />
+            <Text style={ss.journeyPickerCreateText}>Create New Journey</Text>
+          </TouchableOpacity>
         </View>
+      </BottomSheet>
+
+      {/* New Journey Creation Sheet */}
+      <BottomSheet visible={showNewJourneySheet} onDismiss={() => {
+        setShowNewJourneySheet(false);
+        setNewJourneyName('');
+        setNewJourneyDuration(30);
+      }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={ss.newJourneySheet}>
+            <Text style={ss.newJourneySheetTitle}>Create New Journey</Text>
+            <Text style={ss.newJourneySheetLabel}>JOURNEY NAME</Text>
+            <TextInput
+              style={ss.newJourneyInput}
+              placeholder="e.g., Working with grief"
+              placeholderTextColor={COLORS.textTertiary}
+              value={newJourneyName}
+              onChangeText={setNewJourneyName}
+              autoFocus
+              returnKeyType="done"
+            />
+            <Text style={[ss.newJourneySheetLabel, { marginTop: 20 }]}>DURATION</Text>
+            <DurationPicker value={newJourneyDuration} onChange={setNewJourneyDuration} />
+            <View style={ss.newJourneyButtons}>
+              <TouchableOpacity
+                style={ss.newJourneyCancelBtn}
+                onPress={() => {
+                  setShowNewJourneySheet(false);
+                  setNewJourneyName('');
+                  setNewJourneyDuration(30);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={ss.newJourneyCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[ss.newJourneyCreateBtn, !newJourneyName.trim() && ss.newJourneyCreateBtnDisabled]}
+                onPress={handleCreateJourney}
+                activeOpacity={0.85}
+                disabled={!newJourneyName.trim()}
+              >
+                <Text style={ss.newJourneyCreateText}>Create Journey</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </BottomSheet>
     </SafeAreaView>
   );
@@ -1427,5 +1504,74 @@ const ss = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 24, paddingVertical: 16, minHeight: 56,
   },
-  journeyPickerOptionText: { fontSize: 16, fontWeight: '500', color: '#1A1A1A' },
+  journeyPickerOptionText: { fontSize: 16, fontWeight: '500', color: COLORS.text },
+  journeyPickerDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.border,
+    marginVertical: 8,
+    marginHorizontal: 24,
+  },
+  journeyPickerCreateOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 24, paddingVertical: 16, minHeight: 56,
+  },
+  journeyPickerCreateText: {
+    fontSize: 16, fontWeight: '600', color: COLORS.purple,
+    fontFamily: 'Nunito_600SemiBold',
+  },
+
+  // Journey dropdown on Step 1
+  journeyDropdown: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border,
+    borderRadius: RADII.input, paddingHorizontal: 16, minHeight: 52,
+  },
+  journeyDropdownText: {
+    fontSize: 15, fontWeight: '400', color: COLORS.text,
+    fontFamily: 'Nunito_400Regular',
+  },
+
+  // New journey creation sheet
+  newJourneySheet: {
+    paddingHorizontal: 24, paddingTop: 8, paddingBottom: 32,
+  },
+  newJourneySheetTitle: {
+    fontSize: 20, fontWeight: '600', color: COLORS.text,
+    fontFamily: 'Nunito_600SemiBold', marginBottom: 24, textAlign: 'center',
+  },
+  newJourneySheetLabel: {
+    fontSize: 11, fontWeight: '500', color: COLORS.textSecondary,
+    fontFamily: 'Nunito_500Medium', letterSpacing: 1.2,
+    textTransform: 'uppercase', marginBottom: 8,
+  },
+  newJourneyInput: {
+    fontSize: 15, fontWeight: '400', color: COLORS.text,
+    fontFamily: 'Nunito_400Regular',
+    backgroundColor: COLORS.inputBg, borderWidth: 1, borderColor: COLORS.border,
+    borderRadius: 12, paddingHorizontal: 16, height: 48,
+  },
+  newJourneyButtons: {
+    flexDirection: 'row', gap: 12, marginTop: 24,
+  },
+  newJourneyCancelBtn: {
+    flex: 1, height: 48, borderRadius: 24,
+    backgroundColor: COLORS.chipBg,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  newJourneyCancelText: {
+    fontSize: 15, fontWeight: '500', color: COLORS.textSecondary,
+    fontFamily: 'Nunito_500Medium',
+  },
+  newJourneyCreateBtn: {
+    flex: 1, height: 48, borderRadius: 24,
+    backgroundColor: COLORS.purple,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  newJourneyCreateBtnDisabled: {
+    opacity: 0.5,
+  },
+  newJourneyCreateText: {
+    fontSize: 15, fontWeight: '600', color: COLORS.white,
+    fontFamily: 'Nunito_600SemiBold',
+  },
 });

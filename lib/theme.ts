@@ -9,6 +9,9 @@ import { ViewStyle, Text, TextInput, StyleSheet } from 'react-native';
 //   Card: pure white for gentle lift against warm base
 //   Accent: smoky teal (#3E6B6A) — WGSN/Coloro Transformative Teal 2026,
 //           semantically tied to "change and redirection"
+//   Gold: warm gold (#C8A86A) — milestone/insight accent, used sparingly
+//         for breakthroughs, "today" markers, and special moments only.
+//         NOT a second brand color — a single-use emotional register.
 //   NS states: warm-to-cool temperature scale within muted family —
 //              no alarm reds, trauma-informed safe palette
 //   Text: soft warm ink (#221E1A), never pure #000000
@@ -143,6 +146,14 @@ export const COLORS = {
   accentMid: '#5A8F8E',   // for icons, borders on tint bg
   accentTint: '#EAF2F1',  // chip selected bg, tag bg
 
+  // ── Gold — Milestone / Insight accent ─────
+  // Warm gold — used sparingly for breakthroughs, "today" markers,
+  // and special moments only. A second emotional register, not a
+  // second brand color. Never for navigation, labels, or routine UI.
+  gold: '#C8A86A',
+  goldLabel: '#8A6E3A',
+  goldTint: '#F7F1E4',
+
   // ── Utility ───────────────────────────────
   // Muted clay red — warm, not alarm
   destructive: '#C0392B',
@@ -158,8 +169,10 @@ export const COLORS = {
   white: '#FFFFFF',
   black: '#000000',
 
-  // ── Accent purple (legacy) ────────────────
-  // Used for FAB, certain accents - consider migrating to teal
+  // ── Accent purple (legacy — crown/insight data viz only) ──────
+  // Reserved exclusively for crown chakra visualization and
+  // insight-related data overlays. Do not use for navigation,
+  // buttons, or any routine UI elements.
   purple: '#B07FFF',
   purpleTint: '#B07FFF26',
 
@@ -185,10 +198,10 @@ export const COLORS = {
   journey6: '#C9B96A',
 
   // ── Calendar & visualization ──────────────
-  calendarToday: '#B07FFF',
+  calendarToday: '#3E6B6A',    // teal — was purple; now consistent with accent
   calendarPast: '#CCCCCC',
   calendarFuture: '#999999',
-  integrationIcon: '#9B7FBF',
+  integrationIcon: '#3E6B6A',  // teal — was purple; now consistent with accent
   errorRed: '#FF6B6B',
 
   // ── Chakra visualization (brighter) ───────

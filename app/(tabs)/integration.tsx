@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getIntegrations, getActiveJourneys } from '@/lib/storage';
 import type { Integration, Journey } from '@/lib/types';
 import { BottomSheet } from '@/components/BottomSheet';
-import { COLORS, OPTION_TEXT, CATEGORY_DATA } from '@/lib/theme';
+import { COLORS, TYPOGRAPHY, OPTION_TEXT, CATEGORY_DATA } from '@/lib/theme';
 
 // ---- Category metadata ----
 
@@ -262,10 +262,7 @@ const s = StyleSheet.create({
   emptyText: { fontSize: 15, color: '#999999', textAlign: 'center', lineHeight: 22 },
 
   logSection: {},
-  logSectionLabel: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
-    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 12,
-  },
+  logSectionLabel: { ...TYPOGRAPHY.label, marginBottom: 12 },
 
   dateGroup: {
     marginBottom: 16,
@@ -309,10 +306,10 @@ const s = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#B07FFF',
+    backgroundColor: COLORS.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#B07FFF',
+    shadowColor: COLORS.accent,
     shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },

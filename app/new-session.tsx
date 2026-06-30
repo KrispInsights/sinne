@@ -15,7 +15,7 @@ import {
 } from '@/lib/storage';
 import { markSessionSaved } from '@/lib/events';
 import type { BodySensation, Journey } from '@/lib/types';
-import { RADII, COLORS, FONTS, OPTION_TEXT } from '@/lib/theme';
+import { RADII, COLORS, FONTS, TYPOGRAPHY, OPTION_TEXT } from '@/lib/theme';
 
 function journeyIncludesToday(journey: Journey): boolean {
   if (!journey.start_date || !journey.duration_days) return false;
@@ -643,7 +643,7 @@ export default function NewSessionScreen() {
                         : 'No journey selected'}
                     </Text>
                   </View>
-                  <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.purple} />
+                  <MaterialCommunityIcons name="chevron-down" size={20} color={COLORS.accent} />
                 </TouchableOpacity>
               </>
             )}
@@ -1137,7 +1137,7 @@ export default function NewSessionScreen() {
             activeOpacity={0.7}
           >
             <Text style={ss.journeyPickerOptionText}>No journey</Text>
-            {linkedJourneyId === null && <MaterialCommunityIcons name="check" size={20} color={COLORS.purple} />}
+            {linkedJourneyId === null && <MaterialCommunityIcons name="check" size={20} color={COLORS.accent} />}
           </TouchableOpacity>
           {activeJourneys.map((journey) => (
             <TouchableOpacity
@@ -1147,7 +1147,7 @@ export default function NewSessionScreen() {
               activeOpacity={0.7}
             >
               <Text style={ss.journeyPickerOptionText}>{journey.name}</Text>
-              {linkedJourneyId === journey.id && <MaterialCommunityIcons name="check" size={20} color={COLORS.purple} />}
+              {linkedJourneyId === journey.id && <MaterialCommunityIcons name="check" size={20} color={COLORS.accent} />}
             </TouchableOpacity>
           ))}
           <View style={ss.journeyPickerDivider} />
@@ -1159,7 +1159,7 @@ export default function NewSessionScreen() {
             }}
             activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="plus-circle-outline" size={22} color={COLORS.purple} />
+            <MaterialCommunityIcons name="plus-circle-outline" size={22} color={COLORS.accent} />
             <Text style={ss.journeyPickerCreateText}>Create New Journey</Text>
           </TouchableOpacity>
         </View>
@@ -1224,18 +1224,15 @@ const ss = StyleSheet.create({
   closeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   closeBtnText: { fontSize: 18, color: '#666666' },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backBtnText: { fontSize: 28, color: '#B07FFF', lineHeight: 32 },
+  backBtnText: { fontSize: 28, color: COLORS.accent, lineHeight: 32 },
   stepLabel: { fontSize: 12, color: '#999999', fontWeight: '500' },
 
   prompt: {
-    fontSize: 22, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A',
-    marginBottom: 20, lineHeight: 30,
+    fontSize: 26, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A',
+    marginBottom: 20, lineHeight: 32,
   },
 
-  detailsLabel: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
-    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12,
-  },
+  detailsLabel: { ...TYPOGRAPHY.label, marginBottom: 12 },
 
   body: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20 },
 
@@ -1267,11 +1264,11 @@ const ss = StyleSheet.create({
   },
   durationChipSelected: {
     backgroundColor: '#F2EEF9',
-    borderColor: '#B07FFF',
+    borderColor: COLORS.accent,
     borderWidth: 1.5,
   },
   durationChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: '#666666' },
-  durationChipTextSelected: { color: '#B07FFF' },
+  durationChipTextSelected: { color: COLORS.accent },
 
   // Custom duration input
   customDurationRow: { marginBottom: 20 },
@@ -1378,8 +1375,8 @@ const ss = StyleSheet.create({
 
   // Connection step (step 6)
   connectionPrompt: {
-    fontSize: 20, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A',
-    marginBottom: 24, lineHeight: 28, textAlign: 'center',
+    fontSize: 26, fontFamily: 'DMSerifDisplay_400Regular', color: '#1A1A1A',
+    marginBottom: 24, lineHeight: 32, textAlign: 'center',
   },
   connectionRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
@@ -1392,25 +1389,19 @@ const ss = StyleSheet.create({
   },
 
   qualitySection: { marginTop: 16 },
-  qualityLabel: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
-    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8,
-  },
+  qualityLabel: { ...TYPOGRAPHY.label, marginBottom: 8 },
 
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
   chip: {
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, minHeight: 44, justifyContent: 'center',
     backgroundColor: '#FAFAF8', borderWidth: 1, borderColor: '#EEEEEC',
   },
-  chipSelected: { backgroundColor: '#B07FFF', borderColor: '#B07FFF' },
+  chipSelected: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
   chipText: { ...OPTION_TEXT, fontWeight: '500' },
   chipTextSelected: { color: '#FFFFFF' },
 
   clusterBlock: { marginBottom: 14, borderRadius: 12, padding: 12 },
-  clusterName: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500',
-    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8, color: '#999999',
-  },
+  clusterName: { ...TYPOGRAPHY.label, marginBottom: 8 },
   emotionChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, minHeight: 44, justifyContent: 'center' },
   emotionChipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: '#666666' },
 
@@ -1458,19 +1449,19 @@ const ss = StyleSheet.create({
     paddingHorizontal: 24, paddingTop: 8, backgroundColor: '#FFFFFF',
   },
   nextBtn: {
-    backgroundColor: '#B07FFF', borderRadius: 24, height: 48, minWidth: 120, paddingHorizontal: 24,
+    backgroundColor: COLORS.accent, borderRadius: 24, height: 48, minWidth: 120, paddingHorizontal: 24,
     alignItems: 'center', justifyContent: 'center',
   },
   nextBtnInline: {
     alignSelf: 'flex-end',
-    backgroundColor: '#B07FFF', borderRadius: 24, height: 48, minWidth: 120, paddingHorizontal: 24,
+    backgroundColor: COLORS.accent, borderRadius: 24, height: 48, minWidth: 120, paddingHorizontal: 24,
     alignItems: 'center', justifyContent: 'center',
   },
   nextBtnText: { fontSize: 15, fontWeight: '500', color: '#FFFFFF' },
 
   // Progress dots
   progressDots: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 12 },
-  progressDotCurrent: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#B07FFF' },
+  progressDotCurrent: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.accent },
   progressDotCompleted: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(176,127,255,0.4)' },
   progressDotFuture: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0E0E0' },
 
@@ -1479,7 +1470,7 @@ const ss = StyleSheet.create({
     position: 'absolute', bottom: 0, left: 0, right: 0, height: 40,
   },
   saveBtn: {
-    backgroundColor: '#B07FFF', borderRadius: 28, height: 56, width: 200,
+    backgroundColor: COLORS.accent, borderRadius: 28, height: 56, width: 200,
     alignItems: 'center', justifyContent: 'center',
   },
   saveBtnText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
@@ -1490,15 +1481,15 @@ const ss = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     width: '100%', height: 52,
     backgroundColor: 'rgba(176, 127, 255, 0.12)', borderRadius: 16,
-    borderWidth: 1.5, borderColor: '#B07FFF',
+    borderWidth: 1.5, borderColor: COLORS.accent,
     paddingHorizontal: 16,
   },
-  journeyPillText: { fontSize: 15, fontWeight: '500', color: '#B07FFF', fontFamily: 'Nunito_500Medium', flex: 1 },
+  journeyPillText: { fontSize: 15, fontWeight: '500', color: COLORS.accent, fontFamily: 'Nunito_500Medium', flex: 1 },
   noJourneyRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16,
   },
   noJourneyText: { fontSize: 13, color: '#999999', fontFamily: 'Nunito_400Regular' },
-  createJourneyLink: { fontSize: 13, color: '#B07FFF', fontWeight: '500', fontFamily: 'Nunito_500Medium' },
+  createJourneyLink: { fontSize: 13, color: COLORS.accent, fontWeight: '500', fontFamily: 'Nunito_500Medium' },
   journeyPickerSheet: { paddingTop: 4 },
   journeyPickerOption: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -1516,7 +1507,7 @@ const ss = StyleSheet.create({
     paddingHorizontal: 24, paddingVertical: 16, minHeight: 56,
   },
   journeyPickerCreateText: {
-    fontSize: 16, fontWeight: '600', color: COLORS.purple,
+    fontSize: 16, fontWeight: '600', color: COLORS.accent,
     fontFamily: 'Nunito_600SemiBold',
   },
 
@@ -1564,7 +1555,7 @@ const ss = StyleSheet.create({
   },
   newJourneyCreateBtn: {
     flex: 1, height: 48, borderRadius: 24,
-    backgroundColor: COLORS.purple,
+    backgroundColor: COLORS.accent,
     alignItems: 'center', justifyContent: 'center',
   },
   newJourneyCreateBtnDisabled: {

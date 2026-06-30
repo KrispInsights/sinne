@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { updateProfile, createJourney, getProfile } from '@/lib/storage';
 import type { Profile } from '@/lib/types';
+import { COLORS, TYPOGRAPHY } from '@/lib/theme';
 
 // ---- Data ----
 
@@ -503,7 +504,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
     backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EAE4DC',
   },
-  chipSelected: { backgroundColor: '#B07FFF', borderColor: '#B07FFF' },
+  chipSelected: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
   chipText: { fontFamily: 'Nunito_400Regular', fontSize: 13, fontWeight: '400', color: '#3a2e25' },
   chipTextSelected: { color: '#FFFFFF' },
   card: {
@@ -511,17 +512,17 @@ const s = StyleSheet.create({
     borderRadius: 12, padding: 14, marginBottom: 8,
     flexDirection: 'row', alignItems: 'center',
   },
-  cardSelected: { borderColor: '#B07FFF', backgroundColor: '#F6F0FF' },
+  cardSelected: { borderColor: COLORS.accent, backgroundColor: COLORS.accentTint },
   cardTitle: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#1A1A1A', marginBottom: 2 },
-  cardTitleSelected: { color: '#B07FFF' },
+  cardTitleSelected: { color: COLORS.accent },
   cardSub: { fontSize: 13, color: '#999999' },
   cardRadio: {
     width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: '#CCCCCC',
     alignItems: 'center', justifyContent: 'center', marginLeft: 12, flexShrink: 0,
   },
-  cardRadioSelected: { borderColor: '#B07FFF' },
+  cardRadioSelected: { borderColor: COLORS.accent },
   subtypeBlock: { marginTop: 12 },
-  subtypeLabel: { fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#c4b8a8', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 },
+  subtypeLabel: { ...TYPOGRAPHY.label, marginBottom: 8 },
   previewRow: { flexDirection: 'row', gap: 6 },
   previewCard: {
     flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 10,

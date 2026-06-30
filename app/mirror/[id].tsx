@@ -146,7 +146,7 @@ const s = StyleSheet.create({
     alignSelf: 'flex-start', backgroundColor: '#F6F0FF', borderRadius: 20,
     paddingHorizontal: 12, paddingVertical: 5, marginBottom: 8,
   },
-  typePillText: { fontSize: 11, fontWeight: '500', color: '#B07FFF' },
+  typePillText: { fontSize: 11, fontWeight: '500', color: COLORS.accent },
   dateRange: { fontSize: 20, fontWeight: '500', color: '#1A1A1A', marginBottom: 16 },
 
   statsRow: { flexDirection: 'row', gap: 20, marginBottom: 24 },

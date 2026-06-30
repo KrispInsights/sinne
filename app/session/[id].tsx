@@ -12,7 +12,7 @@ import {
 } from '@/lib/storage';
 import type { SessionWithCheckin, Journey, BodySensation } from '@/lib/types';
 import { BodyFigureEllipses } from '@/components/BodyFigure';
-import { FONTS, COLORS, CARD_SHADOW, OPTION_TEXT, getStateColor as getThemeStateColor, getRegionColor, getEmotionColor } from '@/lib/theme';
+import { FONTS, COLORS, TYPOGRAPHY, CARD_SHADOW, OPTION_TEXT, getStateColor as getThemeStateColor, getRegionColor, getEmotionColor } from '@/lib/theme';
 
 // ---- Constants ----
 
@@ -862,7 +862,8 @@ const s = StyleSheet.create({
     fontFamily: FONTS.body,
   },
   heroPractice: {
-    fontSize: 28,
+    fontSize: 36,
+    lineHeight: 42,
     fontFamily: FONTS.display,
     color: COLORS.text,
   },
@@ -909,15 +910,7 @@ const s = StyleSheet.create({
   narrativeSection: {
     marginBottom: 16,
   },
-  narrativeSectionLabel: {
-    fontSize: 11,
-    color: COLORS.textTertiary,
-    letterSpacing: 1.2,
-    marginBottom: 8,
-    fontFamily: 'Nunito_500Medium',
-    fontWeight: '500',
-    textTransform: 'uppercase',
-  },
+  narrativeSectionLabel: { ...TYPOGRAPHY.label, marginBottom: 8 },
   emptyFieldLabel: {
     color: COLORS.textQuaternary,
   },
@@ -1001,10 +994,7 @@ const s = StyleSheet.create({
   emptyTxt: { fontSize: 15, color: COLORS.textTertiary },
 
   // Edit mode section label
-  sectionLabel: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
-    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8,
-  },
+  sectionLabel: { ...TYPOGRAPHY.label, marginBottom: 8 },
 
   // Legacy (kept for edit mode, nsCard used in edit view)
   nsCard: {
@@ -1086,10 +1076,7 @@ const s = StyleSheet.create({
   optionCardSelected: { borderColor: COLORS.accent },
   optionCardText: { fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400' },
   optionCardTextSel: { color: COLORS.accent },
-  qualityLabel: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
-    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6,
-  },
+  qualityLabel: { ...TYPOGRAPHY.label, marginBottom: 6 },
   textarea: {
     fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: COLORS.text,
     backgroundColor: COLORS.inputBg, borderWidth: 1, borderColor: COLORS.border,
@@ -1133,11 +1120,7 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.card, borderTopLeftRadius: 16, borderTopRightRadius: 16,
     paddingTop: 16, paddingHorizontal: 0,
   },
-  pickerTitle: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
-    textTransform: 'uppercase', letterSpacing: 1.2,
-    paddingHorizontal: 20, marginBottom: 8,
-  },
+  pickerTitle: { ...TYPOGRAPHY.label, paddingHorizontal: 20, marginBottom: 8 },
   pickerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 16,

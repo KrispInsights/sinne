@@ -180,7 +180,7 @@ export default function SettingsScreen() {
             <Switch
               value={chakra}
               onValueChange={handleChakraToggle}
-              trackColor={{ false: '#EEEEEC', true: '#B07FFF' }}
+              trackColor={{ false: '#EEEEEC', true: COLORS.accent }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -197,7 +197,7 @@ export default function SettingsScreen() {
             <Switch
               value={integReminder}
               onValueChange={setIntegReminder}
-              trackColor={{ false: '#EEEEEC', true: '#B07FFF' }}
+              trackColor={{ false: '#EEEEEC', true: COLORS.accent }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -210,7 +210,7 @@ export default function SettingsScreen() {
             <Switch
               value={journeyNudge}
               onValueChange={setJourneyNudge}
-              trackColor={{ false: '#EEEEEC', true: '#B07FFF' }}
+              trackColor={{ false: '#EEEEEC', true: COLORS.accent }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -223,7 +223,7 @@ export default function SettingsScreen() {
             <Switch
               value={profile?.weekly_mirror_reminder ?? true}
               onValueChange={handleWeeklyMirrorToggle}
-              trackColor={{ false: '#EEEEEC', true: '#B07FFF' }}
+              trackColor={{ false: '#EEEEEC', true: COLORS.accent }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -236,7 +236,7 @@ export default function SettingsScreen() {
             <Switch
               value={profile?.monthly_mirror_reminder ?? true}
               onValueChange={handleMonthlyMirrorToggle}
-              trackColor={{ false: '#EEEEEC', true: '#B07FFF' }}
+              trackColor={{ false: '#EEEEEC', true: COLORS.accent }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -342,7 +342,7 @@ const s = StyleSheet.create({
   vocabRowLeft: { flex: 1 },
   vocabLabel: { fontSize: 15, color: '#1A1A1A' },
   vocabExample: { fontSize: 13, color: '#999999', marginTop: 4 },
-  checkmark: { fontSize: 16, color: '#B07FFF', fontWeight: '500', marginLeft: 8 },
+  checkmark: { fontSize: 16, color: COLORS.accent, fontWeight: '500', marginLeft: 8 },
 
   version: { fontSize: 13, color: '#999999', textAlign: 'center', marginTop: 24 },
 
@@ -354,7 +354,7 @@ const s = StyleSheet.create({
   modalTitle: { fontSize: 17, fontWeight: '500', color: '#1A1A1A', marginBottom: 8 },
   modalBody: { fontSize: 14, color: '#666666', marginBottom: 24, lineHeight: 22 },
   modalPrimaryBtn: {
-    backgroundColor: '#B07FFF', borderRadius: 12, height: 56,
+    backgroundColor: COLORS.accent, borderRadius: 12, height: 56,
     alignItems: 'center', justifyContent: 'center', marginBottom: 8,
   },
   modalDestructiveBtn: { backgroundColor: '#FF2A2A' },

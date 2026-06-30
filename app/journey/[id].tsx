@@ -8,7 +8,7 @@ import { getJourneys, getSessions, closeJourney, reopenJourney, deleteJourney, g
 import type { Journey, SessionWithCheckin, Mirror } from '@/lib/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BeforeAfterComparison } from '@/components/BeforeAfterComparison';
-import { COLORS, FONTS, CARD_SHADOW, OPTION_TEXT } from '@/lib/theme';
+import { COLORS, FONTS, TYPOGRAPHY, CARD_SHADOW, OPTION_TEXT } from '@/lib/theme';
 
 const STATE_COLORS: Record<string, string> = {
   grounded: '#7AAE8A',
@@ -355,9 +355,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 12,
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backBtnText: { fontSize: 28, color: '#B07FFF', lineHeight: 32 },
+  backBtnText: { fontSize: 28, color: COLORS.accent, lineHeight: 32 },
   editBtn: { paddingHorizontal: 8, paddingVertical: 4 },
-  editBtnText: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: '#B07FFF' },
+  editBtnText: { fontFamily: 'Nunito_500Medium', fontSize: 15, fontWeight: '500', color: COLORS.accent },
   body: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 60 },
 
   headerCard: {
@@ -370,7 +370,7 @@ const s = StyleSheet.create({
   journeyName: { fontSize: 24, fontWeight: '700', color: '#1A1A1A', marginBottom: 6 },
   dateRange: { fontSize: 14, color: '#666666', marginBottom: 2 },
   duration: { fontSize: 13, color: '#999999', marginBottom: 4 },
-  dayCounter: { fontSize: 13, fontWeight: '500', color: '#B07FFF', marginBottom: 0 },
+  dayCounter: { fontSize: 13, fontWeight: '500', color: COLORS.accent, marginBottom: 0 },
 
   intentionsCard: {
     backgroundColor: COLORS.card,
@@ -380,10 +380,7 @@ const s = StyleSheet.create({
     ...CARD_SHADOW,
   },
   intentionsSection: { marginTop: 16, marginBottom: 4 },
-  intentionLabel: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
-    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8,
-  },
+  intentionLabel: { ...TYPOGRAPHY.label, marginBottom: 8 },
   intentionChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   intentionChip: {
     borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6,
@@ -400,12 +397,9 @@ const s = StyleSheet.create({
     ...CARD_SHADOW,
   },
   mirrorIconRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  yourMirrorLabel: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#C49A6C',
-    textTransform: 'uppercase', letterSpacing: 1.2,
-  },
+  yourMirrorLabel: { ...TYPOGRAPHY.label, color: '#C49A6C' },
   yourMirrorTitle: {
-    fontFamily: 'DMSerifDisplay_400Regular', fontSize: 18, fontWeight: '400', color: '#1A1A1A', marginBottom: 8,
+    fontFamily: 'DMSerifDisplay_400Regular', fontSize: 22, lineHeight: 28, fontWeight: '400', color: '#1A1A1A', marginBottom: 8,
   },
   yourMirrorSummary: { fontFamily: 'Nunito_400Regular', fontSize: 14, fontWeight: '400', color: '#666666', lineHeight: 20 },
 
@@ -422,22 +416,19 @@ const s = StyleSheet.create({
 
   statusChip: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   statusActive: { backgroundColor: '#F2F7F3' },
-  statusClosed: { backgroundColor: '#F5F2F9' },
+  statusClosed: { backgroundColor: COLORS.goldTint },
   statusText: { fontSize: 12, fontWeight: '500' },
   statusActiveText: { color: '#7AAE8A' },
-  statusClosedText: { color: '#9B7FBF' },
+  statusClosedText: { color: COLORS.goldLabel },
 
   // New Session button
   newSessionBtn: {
-    backgroundColor: '#B07FFF', borderRadius: 12, height: 50,
+    backgroundColor: COLORS.accent, borderRadius: 12, height: 50,
     alignItems: 'center', justifyContent: 'center', marginTop: 20, marginBottom: 28,
   },
   newSessionBtnText: { fontFamily: 'Nunito_600SemiBold', fontSize: 15, fontWeight: '600', color: '#FFFFFF' },
 
-  sectionLabel: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
-    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10,
-  },
+  sectionLabel: { ...TYPOGRAPHY.label, marginBottom: 10 },
 
   card: { backgroundColor: '#FFFFFF', borderRadius: 12, marginBottom: 24 },
   sessionRow: {
@@ -476,7 +467,7 @@ const s = StyleSheet.create({
   modalTitle: { fontSize: 17, fontWeight: '500', color: '#1A1A1A', marginBottom: 8 },
   modalBody: { fontSize: 14, color: '#666666', marginBottom: 20, lineHeight: 20 },
   modalPrimaryBtn: {
-    backgroundColor: '#B07FFF', borderRadius: 12, height: 50,
+    backgroundColor: COLORS.accent, borderRadius: 12, height: 50,
     alignItems: 'center', justifyContent: 'center', marginBottom: 10,
   },
   modalPrimaryText: { fontSize: 15, fontWeight: '500', color: '#FFFFFF' },

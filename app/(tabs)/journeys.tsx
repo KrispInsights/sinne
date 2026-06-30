@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getJourneys, getSessions, getIntegrations, getPendingJourneyMirrorOffers } from '@/lib/storage';
 import type { Journey, Integration, JourneyMirrorOffer } from '@/lib/types';
-import { COLORS, RADII, CARD_SHADOW, FONTS } from '@/lib/theme';
+import { COLORS, RADII, CARD_SHADOW, FONTS, TYPOGRAPHY } from '@/lib/theme';
 
 // Muted accent colours cycled across journey cards (throat, heart, sacral, third eye, root, solar)
 const JOURNEY_ACCENT_COLORS = [COLORS.throat, COLORS.heart, COLORS.sacral, COLORS.thirdEye, COLORS.root, COLORS.solar];
@@ -379,10 +379,7 @@ const s = StyleSheet.create({
     fontFamily: 'Nunito_500Medium', fontSize: 13, fontWeight: '500', color: COLORS.accent,
   },
 
-  sectionLabel: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
-    textTransform: 'uppercase', letterSpacing: 1.2,
-  },
+  sectionLabel: TYPOGRAPHY.label,
 
   journeyCard: {
     backgroundColor: COLORS.card, borderRadius: RADII.card, overflow: 'hidden',
@@ -391,7 +388,7 @@ const s = StyleSheet.create({
   cardBody: { padding: 20, gap: 10 },
   faded: { opacity: 0.4 },
 
-  journeyName: { fontSize: 18, fontFamily: FONTS.display, color: COLORS.text },
+  journeyName: { fontSize: 22, lineHeight: 28, fontFamily: FONTS.display, color: COLORS.text },
 
   iconsRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 4 },
   iconOverflow: { fontSize: 12, fontWeight: '400', color: COLORS.textTertiary, fontFamily: 'Nunito_400Regular' },
@@ -409,11 +406,11 @@ const s = StyleSheet.create({
 
   endedBadge: {
     position: 'absolute', top: 16, right: 16,
-    backgroundColor: COLORS.chipBg, borderRadius: 24,
+    backgroundColor: COLORS.goldTint, borderRadius: 24,
     paddingHorizontal: 10, paddingVertical: 4,
   },
   endedBadgeText: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
+    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.goldLabel,
     textTransform: 'uppercase', letterSpacing: 1.2,
   },
 

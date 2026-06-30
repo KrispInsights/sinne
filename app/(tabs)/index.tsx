@@ -14,7 +14,7 @@ import { getSessions, getActiveJourneys, getJourneys, getProfile, getIntegration
 import { consumeSessionSaved } from '@/lib/events';
 import type { SessionWithCheckin, Journey, Profile, Integration, Mirror } from '@/lib/types';
 import { BodyFigureEllipses, REGION_CHAKRA_COLORS } from '@/components/BodyFigure';
-import { COLORS, FONTS, OPTION_TEXT, getRegionColor, getEmotionColor, CARD_SHADOW, JOURNEY_COLORS, ARC_BAND_COLORS, PRACTICE_LEGEND_COLORS, INTEGRATION_CATEGORY_COLORS } from '@/lib/theme';
+import { COLORS, FONTS, TYPOGRAPHY, OPTION_TEXT, getRegionColor, getEmotionColor, CARD_SHADOW, JOURNEY_COLORS, ARC_BAND_COLORS, PRACTICE_LEGEND_COLORS, INTEGRATION_CATEGORY_COLORS } from '@/lib/theme';
 
 const IS_DEV = process.env.EXPO_PUBLIC_DEV_MODE === 'true';
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -547,8 +547,8 @@ function CalendarGrid({
                 activeOpacity={0.6}
               >
                 {isToday ? (
-                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.purple, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.white }}>{dateNum}</Text>
+                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.goldTint, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.goldLabel }}>{dateNum}</Text>
                   </View>
                 ) : (
                   <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
@@ -801,8 +801,21 @@ function ArcChart({ sessions, integrations, framework }: { sessions: SessionWith
           >
             <View style={{ width: chartW }}>
               <Svg width={chartW} height={CHART_H + DATE_LABEL_H}>
-                {/* Chart background */}
-                <Rect x={0} y={0} width={chartW} height={CHART_H} fill={COLORS.background} rx={12} ry={12} />
+                <Defs>
+                  {/* Chakra gradient background - smooth transitions with equal spacing */}
+                  <SvgLinearGradient id="chakraGradient" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0%" stopColor={COLORS.crown} stopOpacity="0.5" />
+                    <Stop offset="16.67%" stopColor={COLORS.thirdEye} stopOpacity="0.5" />
+                    <Stop offset="33.33%" stopColor={COLORS.throat} stopOpacity="0.5" />
+                    <Stop offset="50%" stopColor={COLORS.heart} stopOpacity="0.5" />
+                    <Stop offset="66.67%" stopColor={COLORS.solar} stopOpacity="0.5" />
+                    <Stop offset="83.33%" stopColor={COLORS.sacral} stopOpacity="0.5" />
+                    <Stop offset="100%" stopColor={COLORS.root} stopOpacity="0.5" />
+                  </SvgLinearGradient>
+                </Defs>
+
+                {/* Chart background with chakra gradient */}
+                <Rect x={0} y={0} width={chartW} height={CHART_H} fill="url(#chakraGradient)" rx={12} ry={12} />
 
                 {/* Polyvagal band backgrounds (Section 2a) */}
                 <Rect x={0} y={0} width={chartW} height={CHART_H / 3} fill={WELLNESS_TONES.grounded} fillOpacity={0.07} />
@@ -1715,8 +1728,7 @@ export default function HomeScreen() {
         }}
         pointerEvents="none"
       />
-      <View style={{ flex: 1, zIndex: 1 }}>
-        <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
 
           {/* ---- Header ---- */}
           <View style={s.header}>
@@ -1959,6 +1971,16 @@ export default function HomeScreen() {
                   </>
                 );
               })()}
+
+              {/* Explore more insights button */}
+              <TouchableOpacity
+                style={s.exploreInsightsBtn}
+                onPress={() => router.push('/mirror?tab=explore' as any)}
+                activeOpacity={0.7}
+              >
+                <Text style={s.exploreInsightsBtnText}>Explore more insights</Text>
+                <MaterialCommunityIcons name="arrow-right" size={18} color={COLORS.accent} />
+              </TouchableOpacity>
             </View>
           </View>
         ) : (
@@ -2121,11 +2143,10 @@ export default function HomeScreen() {
         onUpdate={handleJourneyUpdate}
       />
 
-        {/* FAB */}
-        <TouchableOpacity style={s.fab} onPress={() => setActionSheetOpen(true)} activeOpacity={0.85}>
-          <MaterialCommunityIcons name="plus" size={28} color={COLORS.white} />
-        </TouchableOpacity>
-      </View>
+      {/* FAB */}
+      <TouchableOpacity style={s.fab} onPress={() => setActionSheetOpen(true)} activeOpacity={0.85}>
+        <MaterialCommunityIcons name="plus" size={28} color={COLORS.white} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -2226,16 +2247,13 @@ const s = StyleSheet.create({
   lastSessionCard: { padding: 20 },
 
   // Section labels
-  sectionLabel: {
-    fontFamily: FONTS.bodyMedium, fontSize: 11, fontWeight: '500', color: COLORS.gray400,
-    letterSpacing: 1.2, textTransform: 'uppercase',
-  },
+  sectionLabel: TYPOGRAPHY.label,
 
   // Active journeys
   activeJourneysSection: { gap: 8 },
   journeyCard: { padding: 20 },
   journeyCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  journeyCardName: { fontSize: 18, fontFamily: FONTS.display, color: COLORS.gray600 },
+  journeyCardName: { fontSize: 22, lineHeight: 28, fontFamily: FONTS.display, color: COLORS.gray600 },
   journeyCardCount: { fontFamily: FONTS.body, fontSize: 12, fontWeight: '400', color: COLORS.gray400 },
   journeyCardBarBg: { height: 5, borderRadius: 99, backgroundColor: COLORS.accentTint },
   journeyCardBarFill: { height: 5, borderRadius: 99 },
@@ -2278,6 +2296,26 @@ const s = StyleSheet.create({
     paddingHorizontal: 2,
   },
 
+  exploreInsightsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: COLORS.accentTint,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+  },
+  exploreInsightsBtnText: {
+    fontFamily: FONTS.bodyMedium,
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.accent,
+  },
+
   // Icon legend
   iconLegend: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', alignItems: 'center' },
   legendIconItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
@@ -2300,7 +2338,7 @@ const s = StyleSheet.create({
   // Last session card
   lastSessionHeader: { fontFamily: FONTS.body, fontSize: 12, fontWeight: '400', color: COLORS.textTertiary, marginBottom: 14, textAlign: 'center' },
   lastSessionBody: { flexDirection: 'column', gap: 10 },
-  lastSessionTitle: { fontSize: 18, fontFamily: FONTS.display, color: COLORS.gray600, textAlign: 'center', width: '100%' },
+  lastSessionTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONTS.display, color: COLORS.gray600, textAlign: 'center', width: '100%' },
   lastSessionColumns: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   lastSessionLeft: { flex: 1, gap: 6 },
   lastSessionRight: { width: 90, alignItems: 'center', justifyContent: 'center' },
@@ -2332,7 +2370,7 @@ const s = StyleSheet.create({
 
   // Integration prompt
   integrationPrompt: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24 },
-  integrationPromptTitle: { fontSize: 20, fontFamily: FONTS.display, color: COLORS.gray600, marginBottom: 8, textAlign: 'center' },
+  integrationPromptTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONTS.display, color: COLORS.gray600, marginBottom: 8, textAlign: 'center' },
   integrationPromptSubtitle: { fontSize: 14, fontWeight: '400', color: COLORS.gray400, lineHeight: 20, textAlign: 'center', marginBottom: 24 },
   integrationPromptButtons: { gap: 12 },
   integrationPromptPrimary: {
@@ -2360,10 +2398,7 @@ const s = StyleSheet.create({
   },
   detailNsText: { fontSize: 15, fontWeight: '600', color: COLORS.white },
   detailSection: { marginBottom: 16 },
-  detailSectionLabel: {
-    fontFamily: FONTS.bodyMedium, fontSize: 11, fontWeight: '500', color: COLORS.gray400,
-    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8,
-  },
+  detailSectionLabel: { ...TYPOGRAPHY.label, marginBottom: 8 },
   detailChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   detailChipText: { fontSize: 13, fontWeight: '500' },
   detailBodyRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },

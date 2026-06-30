@@ -17,7 +17,7 @@ import {
 } from '@expo-google-fonts/dm-serif-display';
 import { getMirrorPromptType } from '@/lib/storage';
 import type { MirrorPromptType } from '@/lib/types';
-import { applyGlobalFont } from '@/lib/theme';
+import { applyGlobalFont, COLORS } from '@/lib/theme';
 
 SplashScreen.preventAutoHideAsync();
 applyGlobalFont();
@@ -61,7 +61,7 @@ function MirrorPromptModal() {
     <Modal transparent visible animationType="fade" onRequestClose={handleLater}>
       <View style={s.overlay}>
         <View style={s.card}>
-          <MaterialCommunityIcons name="eye-outline" size={40} color="#B07FFF" style={{ marginBottom: 16 }} />
+          <MaterialCommunityIcons name="eye-outline" size={40} color={COLORS.accent} style={{ marginBottom: 16 }} />
           <Text style={s.title}>{isMonthly ? 'Your Monthly Mirror is ready' : 'Your Weekly Mirror is ready'}</Text>
           <Text style={s.body}>
             {isMonthly
@@ -135,7 +135,7 @@ const s = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '600', color: '#1A1A1A', textAlign: 'center', marginBottom: 8 },
   body: { fontSize: 14, fontWeight: '400', color: '#666666', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
   primaryBtn: {
-    width: '100%', height: 48, borderRadius: 12, backgroundColor: '#B07FFF',
+    width: '100%', height: 48, borderRadius: 12, backgroundColor: COLORS.accent,
     alignItems: 'center', justifyContent: 'center', marginBottom: 8,
   },
   primaryBtnText: { fontSize: 15, fontWeight: '600', color: '#FFFFFF' },

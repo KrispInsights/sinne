@@ -125,7 +125,8 @@ const s = StyleSheet.create({
   },
 
   title: {
-    fontSize: 28,
+    fontSize: 36,
+    lineHeight: 42,
     fontFamily: 'DMSerifDisplay_400Regular',
     color: '#1A1A1A',
     marginBottom: 8,

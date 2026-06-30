@@ -14,8 +14,18 @@ import {
   getEntitlement,
 } from '@/lib/storage';
 import type { Mirror, MirrorPromptType, SessionWithCheckin, JourneyMirrorOffer, Integration, Journey, Profile, BodySensation } from '@/lib/types';
-import { COLORS, RADII, CARD_SHADOW, FONTS, getEmotionColor, getRegionColor, CHAKRA_COLORS } from '@/lib/theme';
+import { COLORS, RADII, CARD_SHADOW, FONTS, TYPOGRAPHY, getEmotionColor, getRegionColor, CHAKRA_COLORS } from '@/lib/theme';
 import { BodyFigureEllipses } from '@/components/BodyFigure';
+import { BottomSheet } from '@/components/BottomSheet';
+
+// Helper function to capitalize each word and remove underscores
+function formatDisplayText(text: string): string {
+  return text
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
 
 function buildWeeklyResponse(goals: string[]): string {
   const goalLine = goals.length > 0
@@ -98,6 +108,58 @@ function currentMonthLabel(): string {
   return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
 
+// ---- Timeline filtering ----
+
+type TimelineFilter = 'week' | '7d' | 'month' | '30d' | '3mo' | '6mo' | 'ytd' | '1yr' | 'all';
+
+const TIMELINE_FILTERS: Array<{ key: TimelineFilter; label: string }> = [
+  { key: 'week', label: 'This Week' },
+  { key: '7d', label: 'Past 7 days' },
+  { key: 'month', label: 'This Month' },
+  { key: '30d', label: 'Past 30 days' },
+  { key: '3mo', label: 'Past 3 Months' },
+  { key: '6mo', label: 'Past 6 Months' },
+  { key: 'ytd', label: 'Year to Date' },
+  { key: '1yr', label: 'Past Year' },
+  { key: 'all', label: 'All Time' },
+];
+
+function filterByTimeline(
+  sessions: SessionWithCheckin[],
+  integrations: Integration[],
+  filter: TimelineFilter,
+): { sessions: SessionWithCheckin[]; integrations: Integration[] } {
+  if (filter === 'all') return { sessions, integrations };
+  const now = new Date();
+  let cutoff: Date;
+  if (filter === 'week') {
+    const day = now.getDay();
+    const diffToMon = day === 0 ? -6 : 1 - day;
+    cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMon);
+  } else if (filter === '7d') {
+    cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+  } else if (filter === 'month') {
+    cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else if (filter === '30d') {
+    cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
+  } else if (filter === '3mo') {
+    cutoff = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+  } else if (filter === '6mo') {
+    cutoff = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+  } else if (filter === 'ytd') {
+    cutoff = new Date(now.getFullYear(), 0, 1);
+  } else {
+    // '1yr'
+    cutoff = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+  }
+  cutoff.setHours(0, 0, 0, 0);
+  const cutoffIso = cutoff.toISOString().slice(0, 10);
+  return {
+    sessions: sessions.filter((s) => s.session.created_at.slice(0, 10) >= cutoffIso),
+    integrations: integrations.filter((i) => i.note_date >= cutoffIso),
+  };
+}
+
 function compileExportText(mirrors: Mirror[]): string {
   const lines: string[] = ['SINNE — MY MIRRORS', ''];
   for (const m of mirrors) {
@@ -127,6 +189,8 @@ function ExploreContent() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [exploreView, setExploreView] = useState<ExploreView>('overview');
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
+  const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>('all');
+  const [showTimelinePicker, setShowTimelinePicker] = useState(false);
   const [selectedEmotion, setSelectedEmotion] = useState<string>('');
   const [selectedChakra, setSelectedChakra] = useState<string>('');
   const [selectedNSState, setSelectedNSState] = useState<string>('');
@@ -151,27 +215,74 @@ function ExploreContent() {
     return () => { cancelled = true; };
   }, [load]));
 
-  // Filter sessions based on selected journey
+  // Apply timeline filter first
+  const { sessions: timelineFilteredSessions, integrations: timelineFilteredIntegrations } =
+    filterByTimeline(sessions, integrations, timelineFilter);
+
+  // Then filter by journey if selected
   const filteredSessions = selectedFilter === 'all'
-    ? sessions
-    : sessions.filter(s => s.session.journey_id === selectedFilter);
+    ? timelineFilteredSessions
+    : timelineFilteredSessions.filter(s => s.session.journey_id === selectedFilter);
+
+  const filteredIntegrations = selectedFilter === 'all'
+    ? timelineFilteredIntegrations
+    : timelineFilteredIntegrations.filter(i => i.journey_id === selectedFilter);
 
   if (exploreView === 'overview') {
     return (
-      <ExploreOverview
-        sessions={filteredSessions}
-        journeys={journeys}
-        selectedFilter={selectedFilter}
-        onFilterChange={setSelectedFilter}
-        onEmotionPress={(emotion) => {
-          setSelectedEmotion(emotion);
-          setExploreView('emotion');
-        }}
-        onBodyPress={() => setExploreView('body')}
-        onChakraPress={() => setExploreView('chakra')}
-        onNSStatePress={() => setExploreView('nsstate')}
-        onPracticePress={() => setExploreView('practice')}
-      />
+      <>
+        <ExploreOverview
+          sessions={filteredSessions}
+          journeys={journeys}
+          selectedFilter={selectedFilter}
+          onFilterChange={setSelectedFilter}
+          timelineFilter={timelineFilter}
+          onTimelineFilterPress={() => setShowTimelinePicker(true)}
+          onEmotionPress={(emotion) => {
+            setSelectedEmotion(emotion);
+            setExploreView('emotion');
+          }}
+          onBodyPress={() => setExploreView('body')}
+          onChakraPress={() => setExploreView('chakra')}
+          onNSStatePress={() => setExploreView('nsstate')}
+          onPracticePress={() => setExploreView('practice')}
+        />
+        {/* Timeline filter picker modal */}
+        <Modal
+          transparent
+          visible={showTimelinePicker}
+          animationType="fade"
+          onRequestClose={() => setShowTimelinePicker(false)}
+        >
+          <TouchableOpacity
+            style={s.filterPickerBackdrop}
+            onPress={() => setShowTimelinePicker(false)}
+            activeOpacity={1}
+          >
+            <View style={s.timelinePickerSheet}>
+              <View style={s.filterPickerDragHandle} />
+              {TIMELINE_FILTERS.map(({ key, label }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={s.filterPickerRow}
+                  onPress={() => {
+                    setTimelineFilter(key);
+                    setShowTimelinePicker(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.filterPickerRowText, timelineFilter === key && s.filterPickerRowTextSelected]}>
+                    {label}
+                  </Text>
+                  {timelineFilter === key && (
+                    <MaterialCommunityIcons name="check" size={20} color={COLORS.purple} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      </>
     );
   }
 
@@ -281,17 +392,37 @@ function ExploreContent() {
   );
 }
 
-function ExploreOverview({ sessions, journeys, selectedFilter, onFilterChange, onEmotionPress, onBodyPress, onChakraPress, onNSStatePress, onPracticePress }: {
+function ExploreOverview({ sessions, journeys, selectedFilter, onFilterChange, timelineFilter, onTimelineFilterPress, onEmotionPress, onBodyPress, onChakraPress, onNSStatePress, onPracticePress }: {
   sessions: SessionWithCheckin[];
   journeys: Journey[];
   selectedFilter: string;
   onFilterChange: (filter: string) => void;
+  timelineFilter: TimelineFilter;
+  onTimelineFilterPress: () => void;
   onEmotionPress: (emotion: string) => void;
   onBodyPress: () => void;
   onChakraPress: () => void;
   onNSStatePress: () => void;
   onPracticePress: () => void;
 }) {
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [showJourneyPicker, setShowJourneyPicker] = useState(false);
+
+  // Sort sessions by date (oldest to newest, so newest appears on right)
+  const sortedSessions = [...sessions].sort((a, b) =>
+    a.session.created_at.localeCompare(b.session.created_at)
+  );
+
+  // Scroll to end (most recent) when sessions change
+  useEffect(() => {
+    if (scrollViewRef.current && sortedSessions.length > 0) {
+      // Small delay to ensure layout is complete
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: false });
+      }, 100);
+    }
+  }, [sortedSessions.length]);
+
   // Compute top 8 emotions
   const emotionCounts = new Map<string, number>();
   for (const s of sessions) {
@@ -344,30 +475,38 @@ function ExploreOverview({ sessions, journeys, selectedFilter, onFilterChange, o
       : stateCounts.activated >= stateCounts.shutdown ? 'Activated' : 'Shutdown')
     : 'None';
 
+  // Separate active and completed journeys
+  const activeJourneys = journeys.filter(j => j.status === 'active');
+  const completedJourneys = journeys.filter(j => j.status === 'closed');
+
+  // Get selected journey name
+  const selectedJourney = journeys.find(j => j.id === selectedFilter);
+  const selectedJourneyName = selectedFilter === 'all' ? 'All journeys' : (selectedJourney?.name ?? 'Unknown');
+
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.exploreContent} showsVerticalScrollIndicator={false}>
-      {/* Filter bar */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterBar}>
-        <TouchableOpacity
-          style={[s.filterPill, selectedFilter === 'all' && s.filterPillActive]}
-          onPress={() => onFilterChange('all')}
-          activeOpacity={0.7}
-        >
-          <Text style={[s.filterPillText, selectedFilter === 'all' && s.filterPillTextActive]}>All time</Text>
-        </TouchableOpacity>
-        {journeys.map(j => (
+    <>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={s.exploreContent} showsVerticalScrollIndicator={false}>
+        {/* Filter bar */}
+        <View style={s.filterBar}>
           <TouchableOpacity
-            key={j.id}
-            style={[s.filterPill, selectedFilter === j.id && s.filterPillActive]}
-            onPress={() => onFilterChange(j.id)}
+            style={s.timelineFilterBtn}
+            onPress={onTimelineFilterPress}
             activeOpacity={0.7}
           >
-            <Text style={[s.filterPillText, selectedFilter === j.id && s.filterPillTextActive]}>
-              {j.name.length > 20 ? j.name.slice(0, 20) + '…' : j.name}
+            <Text style={s.timelineFilterBtnText}>
+              {TIMELINE_FILTERS.find((f) => f.key === timelineFilter)?.label ?? 'All Time'}
             </Text>
+            <MaterialCommunityIcons name="clock-time-four-outline" size={14} color={COLORS.gray500} />
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+          <TouchableOpacity
+            style={s.journeyDropdownBtn}
+            onPress={() => setShowJourneyPicker(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={s.journeyDropdownText}>{selectedJourneyName}</Text>
+            <MaterialCommunityIcons name="chevron-down" size={18} color={COLORS.textSecondary} />
+          </TouchableOpacity>
+        </View>
 
       {/* Emotion Timeline section */}
       <Text style={s.exploreSectionLabel}>EMOTION TIMELINE</Text>
@@ -381,27 +520,37 @@ function ExploreOverview({ sessions, journeys, selectedFilter, onFilterChange, o
               onPress={() => onEmotionPress(tag)}
               activeOpacity={0.7}
             >
-              <Text style={s.emotionName}>{tag}</Text>
+              <Text style={s.emotionName}>{formatDisplayText(tag)}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Scrollable grid */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ flex: 1 }}
+        >
           <View>
-            {/* Column headers */}
+            {/* Column headers - actual dates */}
             <View style={s.emotionHeaderRow}>
-              {sessions.map((_, idx) => (
-                <View key={idx} style={s.emotionCell}>
-                  <Text style={s.emotionHeaderText}>{idx + 1}</Text>
-                </View>
-              ))}
+              {sortedSessions.map((sess, idx) => {
+                const date = new Date(sess.session.created_at);
+                const day = date.getDate();
+                const month = date.getMonth() + 1;
+                return (
+                  <View key={idx} style={s.emotionCell}>
+                    <Text style={s.emotionHeaderText}>{`${month}/${day}`}</Text>
+                  </View>
+                );
+              })}
             </View>
 
             {/* Emotion rows */}
             {topEmotions.map((tag) => (
               <View key={tag} style={s.emotionGridRow}>
-                {sessions.map((sess, idx) => {
+                {sortedSessions.map((sess, idx) => {
                   const present = sess.checkin?.emotion_tags.includes(tag) ?? false;
                   const color = getEmotionColor(tag).text;
                   return (
@@ -421,7 +570,7 @@ function ExploreOverview({ sessions, journeys, selectedFilter, onFilterChange, o
         </ScrollView>
       </View>
 
-      <Text style={s.emotionHint}>Tap any row to explore connections →</Text>
+      <Text style={s.emotionHint}>Tap Any Row To Explore Connections →</Text>
 
       {/* Explore By section */}
       <Text style={[s.exploreSectionLabel, { paddingHorizontal: 20, marginTop: 20 }]}>EXPLORE BY</Text>
@@ -435,7 +584,7 @@ function ExploreOverview({ sessions, journeys, selectedFilter, onFilterChange, o
             ))}
           </View>
           <Text style={s.exploreCardText} numberOfLines={1}>
-            {top4Regions.slice(0, 3).map(([r]) => r).join(', ')}
+            {top4Regions.slice(0, 3).map(([r]) => formatDisplayText(r)).join(', ')}
           </Text>
         </TouchableOpacity>
 
@@ -447,7 +596,7 @@ function ExploreOverview({ sessions, journeys, selectedFilter, onFilterChange, o
               <View key={idx} style={[s.exploreCardDot, { backgroundColor: color }]} />
             ))}
           </View>
-          <Text style={s.exploreCardText}>7 energy centers</Text>
+          <Text style={s.exploreCardText}>7 Energy Centers</Text>
         </TouchableOpacity>
 
         {/* Card 3 - Practice Type */}
@@ -466,7 +615,7 @@ function ExploreOverview({ sessions, journeys, selectedFilter, onFilterChange, o
             ))}
           </View>
           <Text style={s.exploreCardText} numberOfLines={2}>
-            {Array.from(practiceCounts.keys()).join(', ')}
+            {Array.from(practiceCounts.keys()).map(pt => formatDisplayText(pt)).join(', ')}
           </Text>
         </TouchableOpacity>
 
@@ -484,10 +633,70 @@ function ExploreOverview({ sessions, journeys, selectedFilter, onFilterChange, o
               <View style={{ flex: stateCounts.shutdown, height: 5, backgroundColor: COLORS.shutdown }} />
             )}
           </View>
-          <Text style={s.exploreCardText}>{dominantState}</Text>
+          <Text style={s.exploreCardText}>{formatDisplayText(dominantState)}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
+
+    {/* Journey Picker Bottom Sheet */}
+    <BottomSheet visible={showJourneyPicker} onDismiss={() => setShowJourneyPicker(false)}>
+      <View style={s.journeyPickerSheet}>
+        {/* All journeys option */}
+        <TouchableOpacity
+          style={s.journeyPickerOption}
+          onPress={() => { onFilterChange('all'); setShowJourneyPicker(false); }}
+          activeOpacity={0.7}
+        >
+          <Text style={s.journeyPickerOptionText}>All Journeys</Text>
+          {selectedFilter === 'all' && <MaterialCommunityIcons name="check" size={20} color={COLORS.accent} />}
+        </TouchableOpacity>
+
+        {/* Active journeys */}
+        {activeJourneys.length > 0 && (
+          <>
+            <View style={s.journeyPickerDivider} />
+            <Text style={s.journeyPickerSectionLabel}>ACTIVE</Text>
+            {activeJourneys.map(journey => (
+              <TouchableOpacity
+                key={journey.id}
+                style={s.journeyPickerOption}
+                onPress={() => { onFilterChange(journey.id); setShowJourneyPicker(false); }}
+                activeOpacity={0.7}
+              >
+                <View style={s.journeyPickerRow}>
+                  <MaterialCommunityIcons name="circle-outline" size={16} color={COLORS.accent} />
+                  <Text style={s.journeyPickerOptionText}>{journey.name}</Text>
+                </View>
+                {selectedFilter === journey.id && <MaterialCommunityIcons name="check" size={20} color={COLORS.accent} />}
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+
+        {/* Completed journeys */}
+        {completedJourneys.length > 0 && (
+          <>
+            <View style={s.journeyPickerDivider} />
+            <Text style={s.journeyPickerSectionLabel}>COMPLETED</Text>
+            {completedJourneys.map(journey => (
+              <TouchableOpacity
+                key={journey.id}
+                style={[s.journeyPickerOption, s.journeyPickerOptionCompleted]}
+                onPress={() => { onFilterChange(journey.id); setShowJourneyPicker(false); }}
+                activeOpacity={0.7}
+              >
+                <View style={s.journeyPickerRow}>
+                  <MaterialCommunityIcons name="check-circle" size={16} color={COLORS.textTertiary} />
+                  <Text style={[s.journeyPickerOptionText, s.journeyPickerOptionTextCompleted]}>{journey.name}</Text>
+                </View>
+                {selectedFilter === journey.id && <MaterialCommunityIcons name="check" size={20} color={COLORS.accent} />}
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+      </View>
+    </BottomSheet>
+  </>
   );
 }
 
@@ -604,8 +813,8 @@ function EmotionDetailView({ emotion, sessions, integrations, journeys, onBack }
           <MaterialCommunityIcons name="chevron-left" size={28} color={COLORS.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={s.detailTitle}>{emotion}</Text>
-          <Text style={s.detailSubtitle}>Present in {emotionCount} of {totalSessions} session{totalSessions === 1 ? '' : 's'}</Text>
+          <Text style={s.detailTitle}>{formatDisplayText(emotion)}</Text>
+          <Text style={s.detailSubtitle}>Present In {emotionCount} Of {totalSessions} Session{totalSessions === 1 ? '' : 's'}</Text>
         </View>
         <View style={[s.emotionDetailDot, { backgroundColor: emotionColor.text }]} />
       </View>
@@ -639,7 +848,7 @@ function EmotionDetailView({ emotion, sessions, integrations, journeys, onBack }
             {coOccurringRegions.map(([region, count]) => (
               <View key={region} style={s.bodyChip}>
                 <View style={[s.bodyChipDot, { backgroundColor: getRegionColor(region) }]} />
-                <Text style={s.bodyChipText}>{region} · {count}</Text>
+                <Text style={s.bodyChipText}>{formatDisplayText(region)} · {count}</Text>
               </View>
             ))}
           </View>
@@ -655,7 +864,7 @@ function EmotionDetailView({ emotion, sessions, integrations, journeys, onBack }
               const tagColor = getEmotionColor(tag);
               return (
                 <View key={tag} style={[s.emotionChip, { backgroundColor: tagColor.bg }]}>
-                  <Text style={[s.emotionChipText, { color: tagColor.text }]}>{tag} · {count}</Text>
+                  <Text style={[s.emotionChipText, { color: tagColor.text }]}>{formatDisplayText(tag)} · {count}</Text>
                 </View>
               );
             })}
@@ -670,7 +879,7 @@ function EmotionDetailView({ emotion, sessions, integrations, journeys, onBack }
           <View style={s.chipContainer}>
             {practiceTypes.map(([pt, count]) => (
               <View key={pt} style={s.greyChip}>
-                <Text style={s.greyChipText}>{pt} · {count} session{count === 1 ? '' : 's'}</Text>
+                <Text style={s.greyChipText}>{formatDisplayText(pt)} · {count} session{count === 1 ? '' : 's'}</Text>
               </View>
             ))}
           </View>
@@ -733,7 +942,7 @@ function EmotionDetailView({ emotion, sessions, integrations, journeys, onBack }
       {/* Integration notes */}
       <Text style={s.detailSectionLabel}>INTEGRATION NOTES THAT FOLLOWED</Text>
       {topIntegrations.length === 0 ? (
-        <Text style={s.noIntegrations}>No integration notes followed sessions where {emotion} appeared.</Text>
+        <Text style={s.noIntegrations}>No integration notes followed sessions where {formatDisplayText(emotion)} appeared.</Text>
       ) : (
         <View style={{ paddingHorizontal: 20, gap: 12, marginBottom: 24 }}>
           {topIntegrations.map((integ) => {
@@ -852,7 +1061,7 @@ function BodyRegionView({ sessions, onBack }: {
         <View style={{ flex: 1, marginLeft: 8 }}>
           <Text style={{ fontFamily: FONTS.display, fontSize: 24, color: COLORS.text }}>Body Regions</Text>
           <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.textSecondary, marginTop: 2 }}>
-            Tap a region to see its connections
+            Tap A Region To See Its Connections
           </Text>
         </View>
       </View>
@@ -872,16 +1081,21 @@ function BodyRegionView({ sessions, onBack }: {
         {sortedRegions.map(([region, count]) => {
           const barWidth = (count / maxCount) * 100;
           return (
-            <View key={region} style={s.regionRow}>
+            <TouchableOpacity
+              key={region}
+              style={s.regionRow}
+              onPress={() => router.push(`/body-region/${encodeURIComponent(region)}`)}
+              activeOpacity={0.7}
+            >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                 <View style={[s.regionDot, { backgroundColor: getRegionColor(region) }]} />
-                <Text style={s.regionName}>{region}</Text>
+                <Text style={s.regionName}>{formatDisplayText(region)}</Text>
               </View>
               <View style={s.regionBarContainer}>
                 <View style={[s.regionBar, { width: `${barWidth}%` }]} />
               </View>
               <Text style={s.regionCount}>{count}</Text>
-            </View>
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -979,7 +1193,7 @@ function ChakraView({ sessions, onBack, onChakraSelect }: {
         <View style={{ flex: 1, marginLeft: 8 }}>
           <Text style={{ fontFamily: FONTS.display, fontSize: 24, color: COLORS.text }}>Chakra Lens</Text>
           <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.textSecondary, marginTop: 2 }}>
-            Your practice mapped to energy centers
+            Your Practice Mapped To Energy Centers
           </Text>
         </View>
       </View>
@@ -1013,7 +1227,7 @@ function ChakraView({ sessions, onBack, onChakraSelect }: {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.chakraName}>{chakra.name}</Text>
-                <Text style={s.chakraRegions}>{chakra.regions.join(', ')}</Text>
+                <Text style={s.chakraRegions}>{chakra.regions.map(r => formatDisplayText(r)).join(', ')}</Text>
               </View>
               <View style={s.chakraBarContainer}>
                 <View style={[s.chakraBar, { width: `${barWidth}%`, backgroundColor: chakra.color }]} />
@@ -1201,7 +1415,7 @@ function ChakraDetailView({ chakra, sessions, integrations, journeys, onBack }: 
             {sortedRegions.map(([region, count]) => (
               <View key={region} style={s.bodyChip}>
                 <View style={[s.bodyChipDot, { backgroundColor: chakraData.color }]} />
-                <Text style={s.bodyChipText}>{region} · {count}</Text>
+                <Text style={s.bodyChipText}>{formatDisplayText(region)} · {count}</Text>
               </View>
             ))}
           </View>
@@ -1217,7 +1431,7 @@ function ChakraDetailView({ chakra, sessions, integrations, journeys, onBack }: 
               const tagColor = getEmotionColor(tag);
               return (
                 <View key={tag} style={[s.emotionChip, { backgroundColor: tagColor.bg }]}>
-                  <Text style={[s.emotionChipText, { color: tagColor.text }]}>{tag} · {count}</Text>
+                  <Text style={[s.emotionChipText, { color: tagColor.text }]}>{formatDisplayText(tag)} · {count}</Text>
                 </View>
               );
             })}
@@ -1232,7 +1446,7 @@ function ChakraDetailView({ chakra, sessions, integrations, journeys, onBack }: 
           <View style={s.chipContainer}>
             {sortedPractices.map(([pt, count]) => (
               <View key={pt} style={s.greyChip}>
-                <Text style={s.greyChipText}>{pt} · {count} session{count === 1 ? '' : 's'}</Text>
+                <Text style={s.greyChipText}>{formatDisplayText(pt)} · {count} session{count === 1 ? '' : 's'}</Text>
               </View>
             ))}
           </View>
@@ -1429,7 +1643,7 @@ function NSStateView({ sessions, onBack, onStateSelect }: {
         <View style={{ flex: 1, marginLeft: 8 }}>
           <Text style={{ fontFamily: FONTS.display, fontSize: 24, color: COLORS.text }}>Nervous System</Text>
           <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.textSecondary, marginTop: 2 }}>
-            Your state across this arc
+            Your State Across This Arc
           </Text>
         </View>
       </View>
@@ -1659,7 +1873,7 @@ function NSStateDetailView({ state, sessions, integrations, journeys, onBack }: 
         <View style={{ flex: 1, marginLeft: 8 }}>
           <Text style={[{ fontFamily: FONTS.display, fontSize: 22 }, { color: stateColor }]}>{stateName}</Text>
           <Text style={{ fontFamily: FONTS.body, fontSize: 12, color: COLORS.textSecondary, marginTop: 2 }}>
-            {stateCount} session{stateCount === 1 ? '' : 's'} in this state
+            {stateCount} Session{stateCount === 1 ? '' : 's'} In This State
           </Text>
         </View>
         <View style={[s.stateDot, { backgroundColor: stateColor }]} />
@@ -1679,7 +1893,7 @@ function NSStateDetailView({ state, sessions, integrations, journeys, onBack }: 
           <View style={s.chipContainer}>
             {practicePercentages.map(({ practice, percentage, count }) => (
               <View key={practice} style={s.greyChip}>
-                <Text style={s.greyChipText}>{practice} · {percentage}% ({count})</Text>
+                <Text style={s.greyChipText}>{formatDisplayText(practice)} · {percentage}% ({count})</Text>
               </View>
             ))}
           </View>
@@ -1695,7 +1909,7 @@ function NSStateDetailView({ state, sessions, integrations, journeys, onBack }: 
               const tagColor = getEmotionColor(tag);
               return (
                 <View key={tag} style={[s.emotionChip, { backgroundColor: tagColor.bg }]}>
-                  <Text style={[s.emotionChipText, { color: tagColor.text }]}>{tag} · {count}</Text>
+                  <Text style={[s.emotionChipText, { color: tagColor.text }]}>{formatDisplayText(tag)} · {count}</Text>
                 </View>
               );
             })}
@@ -1711,7 +1925,7 @@ function NSStateDetailView({ state, sessions, integrations, journeys, onBack }: 
             {sortedRegions.map(([region, count]) => (
               <View key={region} style={s.bodyChip}>
                 <View style={[s.bodyChipDot, { backgroundColor: getRegionColor(region) }]} />
-                <Text style={s.bodyChipText}>{region} · {count}</Text>
+                <Text style={s.bodyChipText}>{formatDisplayText(region)} · {count}</Text>
               </View>
             ))}
           </View>
@@ -1771,7 +1985,7 @@ function NSStateDetailView({ state, sessions, integrations, journeys, onBack }: 
       {/* Integration notes after sessions in this state */}
       <Text style={s.detailSectionLabel}>INTEGRATION NOTES AFTER SESSIONS IN THIS STATE</Text>
       {topIntegrations.length === 0 ? (
-        <Text style={s.noIntegrations}>No integration notes followed sessions in this state.</Text>
+        <Text style={s.noIntegrations}>No Integration Notes Followed Sessions In This State.</Text>
       ) : (
         <View style={{ paddingHorizontal: 20, gap: 12, marginBottom: 24 }}>
           {topIntegrations.map((integ) => {
@@ -1857,7 +2071,7 @@ function PracticeTypeView({ sessions, onBack, onPracticeSelect }: {
         <View style={{ flex: 1, marginLeft: 8 }}>
           <Text style={{ fontFamily: FONTS.display, fontSize: 24, color: COLORS.text }}>Practice Types</Text>
           <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: COLORS.textSecondary, marginTop: 2 }}>
-            Tap a practice to explore its connections
+            Tap A Practice To Explore Its Connections
           </Text>
         </View>
       </View>
@@ -1880,7 +2094,7 @@ function PracticeTypeView({ sessions, onBack, onPracticeSelect }: {
                 <MaterialCommunityIcons name={getPracticeIcon(practice) as any} size={20} color={COLORS.text} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.practiceName}>{practice}</Text>
+                <Text style={s.practiceName}>{formatDisplayText(practice)}</Text>
                 <View style={s.practiceStateBar}>
                   {data.grounded > 0 && (
                     <View style={{ flex: data.grounded, height: 7, backgroundColor: COLORS.grounded }} />
@@ -1998,7 +2212,7 @@ function PracticeTypeDetailView({ practice, sessions, integrations, journeys, on
           <MaterialCommunityIcons name="chevron-left" size={28} color={COLORS.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 8 }}>
-          <Text style={{ fontFamily: FONTS.display, fontSize: 22, color: COLORS.text }}>{practice}</Text>
+          <Text style={{ fontFamily: FONTS.display, fontSize: 22, color: COLORS.text }}>{formatDisplayText(practice)}</Text>
           <Text style={{ fontFamily: FONTS.body, fontSize: 12, color: COLORS.textSecondary, marginTop: 2 }}>
             {practiceSessions.length} session{practiceSessions.length === 1 ? '' : 's'}
           </Text>
@@ -2062,7 +2276,7 @@ function PracticeTypeDetailView({ practice, sessions, integrations, journeys, on
               const tagColor = getEmotionColor(tag);
               return (
                 <View key={tag} style={[s.emotionChip, { backgroundColor: tagColor.bg }]}>
-                  <Text style={[s.emotionChipText, { color: tagColor.text }]}>{tag} · {count}</Text>
+                  <Text style={[s.emotionChipText, { color: tagColor.text }]}>{formatDisplayText(tag)} · {count}</Text>
                 </View>
               );
             })}
@@ -2078,7 +2292,7 @@ function PracticeTypeDetailView({ practice, sessions, integrations, journeys, on
             {sortedRegions.map(([region, count]) => (
               <View key={region} style={s.bodyChip}>
                 <View style={[s.bodyChipDot, { backgroundColor: getRegionColor(region) }]} />
-                <Text style={s.bodyChipText}>{region} · {count}</Text>
+                <Text style={s.bodyChipText}>{formatDisplayText(region)} · {count}</Text>
               </View>
             ))}
           </View>
@@ -2195,10 +2409,10 @@ function GenerationView({ type, journeyName }: { type: MirrorPromptType; journey
   const translateX = barAnim.interpolate({ inputRange: [0, 1], outputRange: [-120, 220] });
 
   const label = type === 'monthly'
-    ? 'Reflecting on your month…'
+    ? 'Reflecting On Your Month…'
     : type === 'journey'
-    ? `Reflecting on ${journeyName ?? 'your journey'}…`
-    : 'Reflecting on your week…';
+    ? `Reflecting On ${journeyName ?? 'Your Journey'}…`
+    : 'Reflecting On Your Week…';
 
   return (
     <View style={s.genContainer}>
@@ -2222,7 +2436,7 @@ function MirrorCard({ mirror, onPress, onCopy }: { mirror: Mirror; onPress: () =
     ? `Journey · ${mirror.journey_name ?? ''}`
     : mirror.type === 'weekly' ? 'Weekly' : 'Monthly';
 
-  const pillBg = isJourney ? '#F7F0E7' : (isMonthly ? COLORS.heartTint : COLORS.purpleTint);
+  const pillBg = isJourney ? '#F7F0E7' : (isMonthly ? COLORS.heartTint : COLORS.accentTint);
   const pillText = isJourney ? COLORS.journey3 : (isMonthly ? COLORS.heart : COLORS.accent);
 
   return (
@@ -2464,20 +2678,20 @@ function MirrorContent() {
         {!unlockStatus.unlocked ? (
           <View style={s.lockedState}>
             <MaterialCommunityIcons name="eye-off-outline" size={64} color={COLORS.gray300} style={{ marginBottom: 16 }} />
-            <Text style={s.lockedTitle}>Your Mirror is resting</Text>
+            <Text style={s.lockedTitle}>Your Mirror Is Resting</Text>
             <Text style={s.lockedMessage}>
               {unlockStatus.sessionsNeeded > 0
-                ? `Log ${unlockStatus.sessionsNeeded} more ${unlockStatus.sessionsNeeded === 1 ? 'session' : 'sessions'} to unlock your weekly synthesis.`
-                : 'Your Mirror will be available soon.'}
+                ? `Log ${unlockStatus.sessionsNeeded} More ${unlockStatus.sessionsNeeded === 1 ? 'Session' : 'Sessions'} To Unlock Your Weekly Synthesis.`
+                : 'Your Mirror Will Be Available Soon.'}
             </Text>
             <View style={s.lockedStats}>
               <View style={s.lockedStatRow}>
                 <MaterialCommunityIcons name="check-circle" size={20} color={unlockStatus.totalSessions >= 7 ? COLORS.heart : COLORS.gray300} />
-                <Text style={s.lockedStatText}>{unlockStatus.totalSessions} / 7 sessions logged</Text>
+                <Text style={s.lockedStatText}>{unlockStatus.totalSessions} / 7 Sessions Logged</Text>
               </View>
               <View style={s.lockedStatRow}>
                 <MaterialCommunityIcons name="check-circle" size={20} color={unlockStatus.daysSinceSignup >= 7 ? COLORS.heart : COLORS.gray300} />
-                <Text style={s.lockedStatText}>{unlockStatus.daysSinceSignup} / 7 days since sign-up</Text>
+                <Text style={s.lockedStatText}>{unlockStatus.daysSinceSignup} / 7 Days Since Sign-Up</Text>
               </View>
             </View>
           </View>
@@ -2492,7 +2706,7 @@ function MirrorContent() {
               >
                 <MaterialCommunityIcons name="eye-outline" size={28} color={COLORS.white} style={{ marginBottom: 10 }} />
                 <Text style={s.bannerTitle}>
-                  {promptType === 'monthly' ? 'Your month in the Mirror' : 'Your week in the Mirror'}
+                  {promptType === 'monthly' ? 'Your Month In The Mirror' : 'Your Week In The Mirror'}
                 </Text>
                 <Text style={s.bannerSubtitle}>
                   {promptType === 'monthly' ? currentMonthLabel() : currentWeekRangeLabel()}
@@ -2516,11 +2730,11 @@ function MirrorContent() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <MaterialCommunityIcons name="eye-outline" size={20} color={COLORS.accent} />
                   <View style={{ flex: 1 }}>
-                    <Text style={s.journeyOfferTitle}>{pendingJourneyOffer.journey_name} is complete.</Text>
+                    <Text style={s.journeyOfferTitle}>{pendingJourneyOffer.journey_name} Is Complete.</Text>
                     {pendingJourneyDateRange ? (
                       <Text style={s.journeyOfferDateRange}>{pendingJourneyDateRange}</Text>
                     ) : null}
-                    <Text style={s.journeyOfferSubtitle}>Tap to reflect on this journey</Text>
+                    <Text style={s.journeyOfferSubtitle}>Tap To Reflect On This Journey</Text>
                   </View>
                   <Text style={s.journeyOfferReflect}>Reflect →</Text>
                 </View>
@@ -2531,7 +2745,7 @@ function MirrorContent() {
               <View style={s.sectionHeader}>
                 <View style={{ flex: 1 }} />
                 <TouchableOpacity onPress={handleExportAll} activeOpacity={0.7}>
-                  <Text style={s.exportLinkText}>Export all mirrors</Text>
+                  <Text style={s.exportLinkText}>Export All Mirrors</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -2541,8 +2755,8 @@ function MirrorContent() {
             {mirrors.length === 0 ? (
               <View style={s.emptyState}>
                 <MaterialCommunityIcons name="eye-outline" size={48} color={COLORS.gray300} />
-                <Text style={s.emptyPrimary}>Your first Mirror arrives at the end of this week.</Text>
-                <Text style={s.emptySecondary}>Keep logging your sessions and integrations.</Text>
+                <Text style={s.emptyPrimary}>Your First Mirror Arrives At The End Of This Week.</Text>
+                <Text style={s.emptySecondary}>Keep Logging Your Sessions And Integrations.</Text>
               </View>
             ) : (
               <View style={{ gap: 12 }}>
@@ -2581,16 +2795,16 @@ function MirrorContent() {
             onPress={() => {}}
           >
             <MaterialCommunityIcons name="content-copy" size={36} color={COLORS.accent} style={{ marginBottom: 16 }} />
-            <Text style={s.exportModalTitle}>All mirrors copied</Text>
+            <Text style={s.exportModalTitle}>All Mirrors Copied</Text>
             <Text style={s.exportModalBody}>
-              Your reflections are on your clipboard. Paste them into any journal, notes app, or AI tool.
+              Your Reflections Are On Your Clipboard. Paste Them Into Any Journal, Notes App, Or AI Tool.
             </Text>
             <TouchableOpacity
               style={s.exportModalBtn}
               onPress={() => setExportModalVisible(false)}
               activeOpacity={0.85}
             >
-              <Text style={s.exportModalBtnText}>Got it</Text>
+              <Text style={s.exportModalBtnText}>Got It</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -2603,8 +2817,16 @@ function MirrorContent() {
 
 export default function ReflectScreen() {
   const router = useRouter();
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
   const [activeTab, setActiveTab] = useState<'mirror' | 'explore'>('mirror');
   const [isSubscribed, setIsSubscribed] = useState(true); // TODO Phase B: wire to StoreKit subscription check
+
+  // Set initial tab from URL param
+  useEffect(() => {
+    if (tab === 'explore') {
+      setActiveTab('explore');
+    }
+  }, [tab]);
 
   useFocusEffect(useCallback(() => {
     let cancelled = false;
@@ -2686,7 +2908,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 16, paddingBottom: 0,
   },
-  title: { fontSize: 28, fontFamily: FONTS.display, color: COLORS.text },
+  title: { fontSize: 36, lineHeight: 42, fontFamily: FONTS.display, color: COLORS.text },
 
   // Sub-tab bar
   subTabBar: {
@@ -2741,10 +2963,7 @@ const s = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
   },
-  sectionLabel: {
-    fontFamily: FONTS.bodyMedium, fontSize: 11, fontWeight: '500',
-    textTransform: 'uppercase', letterSpacing: 1.2, color: COLORS.gray400,
-  },
+  sectionLabel: TYPOGRAPHY.label,
   exportLinkText: { fontSize: 13, fontWeight: '500', color: COLORS.accent },
 
   mirrorCard: {
@@ -2752,7 +2971,7 @@ const s = StyleSheet.create({
   },
   cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   typePill: {
-    backgroundColor: COLORS.purpleTint, borderRadius: 20,
+    backgroundColor: COLORS.accentTint, borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 4,
   },
   typePillText: { fontSize: 11, fontWeight: '500', color: COLORS.accent },
@@ -2821,9 +3040,87 @@ const s = StyleSheet.create({
     paddingBottom: 60,
   },
   filterBar: {
+    flexDirection: 'row',
     paddingHorizontal: 20,
     gap: 8,
     paddingBottom: 16,
+  },
+  timelineFilterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.accentTint,
+    borderRadius: 12,
+    height: 36,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: COLORS.purple + '4D',
+  },
+  timelineFilterBtnText: {
+    fontFamily: FONTS.body,
+    fontSize: 13,
+    color: COLORS.text,
+  },
+  journeyDropdownBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    height: 36,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  journeyDropdownText: {
+    fontFamily: FONTS.body,
+    fontSize: 13,
+    color: COLORS.text,
+    flex: 1,
+  },
+  journeyPickerSheet: {
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  journeyPickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    minHeight: 56,
+  },
+  journeyPickerOptionCompleted: {
+    opacity: 0.5,
+  },
+  journeyPickerOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.text,
+    fontFamily: FONTS.bodyMedium,
+  },
+  journeyPickerOptionTextCompleted: {
+    color: COLORS.textSecondary,
+  },
+  journeyPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  journeyPickerDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: COLORS.border,
+    marginVertical: 8,
+    marginHorizontal: 24,
+  },
+  journeyPickerSectionLabel: {
+    ...TYPOGRAPHY.label,
+    paddingHorizontal: 24,
+    marginTop: 8,
+    marginBottom: 4,
   },
   filterPill: {
     paddingHorizontal: 16,
@@ -2847,15 +3144,7 @@ const s = StyleSheet.create({
     color: COLORS.background,
   },
 
-  exploreSectionLabel: {
-    fontFamily: FONTS.bodySemiBold,
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    color: COLORS.textTertiary,
-    marginBottom: 12,
-  },
+  exploreSectionLabel: { ...TYPOGRAPHY.label, marginBottom: 12 },
 
   // Emotion Timeline
   emotionTimelineContainer: {
@@ -3006,16 +3295,7 @@ const s = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 20,
   },
-  detailSectionLabel: {
-    fontFamily: FONTS.bodySemiBold,
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    color: COLORS.textTertiary,
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
+  detailSectionLabel: { ...TYPOGRAPHY.label, paddingHorizontal: 20, marginBottom: 12 },
   arcDot: {
     width: 16,
     height: 16,
@@ -3406,11 +3686,11 @@ const s = StyleSheet.create({
   },
   paywallTitle: {
     fontFamily: FONTS.display,
-    fontSize: 18,
+    fontSize: 22,
     color: COLORS.text,
     textAlign: 'center',
     marginBottom: 24,
-    lineHeight: 26,
+    lineHeight: 28,
   },
   paywallButton: {
     backgroundColor: COLORS.accent,
@@ -3423,5 +3703,45 @@ const s = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.white,
+  },
+
+  // Timeline filter picker modal
+  filterPickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  timelinePickerSheet: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 12,
+    paddingBottom: 40,
+  },
+  filterPickerDragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.gray200,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  filterPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    minHeight: 48,
+  },
+  filterPickerRowText: {
+    fontFamily: FONTS.body,
+    fontSize: 15,
+    fontWeight: '400',
+    color: COLORS.gray600,
+  },
+  filterPickerRowTextSelected: {
+    fontWeight: '600',
+    color: COLORS.purple,
   },
 });

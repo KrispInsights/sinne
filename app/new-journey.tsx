@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createJourney } from '@/lib/storage';
-import { COLORS, OPTION_TEXT } from '@/lib/theme';
+import { COLORS, TYPOGRAPHY, OPTION_TEXT } from '@/lib/theme';
 
 // ---- Date helpers ----
 
@@ -390,10 +390,7 @@ const s = StyleSheet.create({
     flex: 1,
   },
 
-  label: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: '#999999',
-    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10,
-  },
+  label: { ...TYPOGRAPHY.label, marginBottom: 10 },
 
   input: {
     fontFamily: 'Nunito_400Regular', fontSize: 15, fontWeight: '400', color: '#1A1A1A',

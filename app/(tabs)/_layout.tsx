@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { COLORS } from '@/lib/theme';
 
-const ACTIVE = '#B07FFF';
+const ACTIVE = COLORS.accent;
 const INACTIVE = '#BBBBBB';
 
 export default function TabLayout() {

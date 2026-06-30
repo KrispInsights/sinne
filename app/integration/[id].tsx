@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { getIntegrations, deleteIntegration } from '@/lib/storage';
 import type { Integration } from '@/lib/types';
-import { COLORS, FONTS, CARD_SHADOW, CATEGORY_DATA } from '@/lib/theme';
+import { COLORS, FONTS, TYPOGRAPHY, CARD_SHADOW, CATEGORY_DATA } from '@/lib/theme';
 
 // Category questions (matching integration-entry.tsx)
 const CATEGORY_QUESTIONS: Record<string, [string, string, string]> = {
@@ -208,10 +208,7 @@ const s = StyleSheet.create({
     padding: 20, marginBottom: 24,
   },
   sectionWithMargin: { marginTop: 16 },
-  sectionLabel: {
-    fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.textTertiary,
-    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8,
-  },
+  sectionLabel: { ...TYPOGRAPHY.label, marginBottom: 8 },
   sectionContent: {
     fontSize: 15, fontFamily: FONTS.body, fontWeight: '400',
     color: COLORS.text, lineHeight: 22,

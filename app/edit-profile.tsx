@@ -7,6 +7,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getProfile, updateProfile } from '@/lib/storage';
 import type { Profile } from '@/lib/types';
+import { COLORS } from '@/lib/theme';
 
 // ---- Options ----
 
@@ -124,7 +125,7 @@ function CountryModal({
             >
               <Text style={[s.countryText, selected === item && s.countryTextSelected]}>{item}</Text>
               {selected === item && (
-                <MaterialCommunityIcons name="check" size={18} color="#B07FFF" />
+                <MaterialCommunityIcons name="check" size={18} color={COLORS.accent} />
               )}
             </TouchableOpacity>
           )}
@@ -259,7 +260,7 @@ export default function EditProfileScreen() {
             >
               <Text style={[s.expCardText, sel && s.expCardTextSelected]}>{opt}</Text>
               <View style={[s.expRadio, sel && s.expRadioSelected]}>
-                {sel && <MaterialCommunityIcons name="check" size={14} color="#B07FFF" />}
+                {sel && <MaterialCommunityIcons name="check" size={14} color={COLORS.accent} />}
               </View>
             </TouchableOpacity>
           );
@@ -321,14 +322,14 @@ const s = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14, marginBottom: 8,
     flexDirection: 'row', alignItems: 'center',
   },
-  expCardSelected: { borderColor: '#B07FFF', backgroundColor: '#F6F0FF' },
+  expCardSelected: { borderColor: COLORS.accent, backgroundColor: COLORS.accentTint },
   expCardText: { flex: 1, fontSize: 15, fontWeight: '500', color: '#3a2e25' },
-  expCardTextSelected: { color: '#B07FFF' },
+  expCardTextSelected: { color: COLORS.accent },
   expRadio: {
     width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: '#CCCCCC',
     alignItems: 'center', justifyContent: 'center', marginLeft: 12, flexShrink: 0,
   },
-  expRadioSelected: { borderColor: '#B07FFF' },
+  expRadioSelected: { borderColor: COLORS.accent },
 
   countryField: {
     backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EAE4DC',
@@ -355,7 +356,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#EEEEEC',
   },
-  countryRowSelected: { backgroundColor: '#F6F0FF' },
+  countryRowSelected: { backgroundColor: COLORS.accentTint },
   countryText: { fontSize: 15, color: '#1A1A1A' },
-  countryTextSelected: { color: '#B07FFF', fontWeight: '500' },
+  countryTextSelected: { color: COLORS.accent, fontWeight: '500' },
 });

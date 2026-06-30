@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getSessions, getJourneys, getProfile } from '@/lib/storage';
 import type { SessionWithCheckin, Journey } from '@/lib/types';
 import { BodyFigureEllipses } from '@/components/BodyFigure';
-import { COLORS, RADII, CARD_SHADOW, FONTS, getStateColor, getEmotionColor, OPTION_TEXT } from '@/lib/theme';
+import { COLORS, RADII, CARD_SHADOW, FONTS, TYPOGRAPHY, getStateColor, getEmotionColor, OPTION_TEXT } from '@/lib/theme';
 
 function formatSessionDateTime(iso: string, durationMinutes?: number | null): string {
   const d = new Date(iso);
@@ -332,7 +332,7 @@ export default function SessionsScreen() {
             <MaterialCommunityIcons
               name="tune-variant"
               size={14}
-              color={hasActiveFilters ? '#B07FFF' : '#999999'}
+              color={hasActiveFilters ? COLORS.accent : '#999999'}
             />
             <Text style={[s.filterHeaderPillText, hasActiveFilters && s.filterHeaderPillTextActive]}>
               Filter{hasActiveFilters ? ` · ${(activeNsStates.length + activePractices.length + activeEmotions.length)}` : ''}
@@ -467,15 +467,15 @@ export default function SessionsScreen() {
                           style={[
                             s.filterSheetChip,
                             active && {
-                              backgroundColor: '#B07FFF26',
-                              borderColor: '#B07FFF',
+                              backgroundColor: COLORS.accentTint,
+                              borderColor: COLORS.accent,
                               borderWidth: 1.5,
                             },
                           ]}
                           onPress={() => togglePractice(practice)}
                           activeOpacity={0.7}
                         >
-                          <Text style={[s.filterSheetChipText, active && { color: '#B07FFF', fontWeight: '500' }]}>
+                          <Text style={[s.filterSheetChipText, active && { color: COLORS.accent, fontWeight: '500' }]}>
                             {practice}
                           </Text>
                         </TouchableOpacity>
@@ -574,7 +574,7 @@ const s = StyleSheet.create({
     flex: 1, backgroundColor: COLORS.card, borderRadius: 12, padding: 14,
     alignItems: 'flex-start', position: 'relative',
   },
-  statCount: { fontSize: 28, fontFamily: FONTS.display, marginBottom: 4, marginTop: 8 },
+  statCount: { fontSize: 36, lineHeight: 42, fontFamily: FONTS.display, marginBottom: 4, marginTop: 8 },
   statLabel: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: COLORS.textTertiary },
 
   // Filter header pill button
@@ -591,7 +591,7 @@ const s = StyleSheet.create({
     height: 32,
   },
   filterHeaderPillActive: {
-    borderColor: '#B07FFF',
+    borderColor: COLORS.accent,
   },
   filterHeaderPillText: {
     fontFamily: 'Nunito_500Medium',
@@ -600,7 +600,7 @@ const s = StyleSheet.create({
     color: '#666666',
   },
   filterHeaderPillTextActive: {
-    color: '#B07FFF',
+    color: COLORS.accent,
   },
 
   // Filter bottom sheet
@@ -618,15 +618,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 8,
   },
-  filterSectionLabel: {
-    fontFamily: 'Nunito_500Medium',
-    fontSize: 11,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    color: '#999999',
-    marginBottom: 12,
-  },
+  filterSectionLabel: { ...TYPOGRAPHY.label, marginBottom: 12 },
   filterClusterLabel: {
     fontFamily: 'Nunito_500Medium',
     fontSize: 11,
@@ -686,7 +678,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 999,
-    backgroundColor: '#B07FFF',
+    backgroundColor: COLORS.accent,
   },
   filterApplyText: {
     fontFamily: 'Nunito_600SemiBold',
@@ -703,10 +695,10 @@ const s = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#B07FFF',
+    backgroundColor: COLORS.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#B07FFF',
+    shadowColor: COLORS.accent,
     shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
@@ -731,7 +723,7 @@ const s = StyleSheet.create({
   journeyPillText: { fontFamily: 'Nunito_500Medium', fontSize: 11, fontWeight: '500', color: COLORS.crown },
 
   cardDate: { fontFamily: 'Nunito_400Regular', fontSize: 12, fontWeight: '400', color: COLORS.textTertiary },
-  cardTitle: { fontSize: 18, fontFamily: FONTS.display, color: COLORS.text, marginTop: 2, marginBottom: 8 },
+  cardTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONTS.display, color: COLORS.text, marginTop: 2, marginBottom: 8 },
 
   chipsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   greyChip: { borderRadius: 24, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: COLORS.chipBg },
